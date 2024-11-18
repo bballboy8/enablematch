@@ -17,6 +17,14 @@ git clone https://github.com/bballboy8/enablematch
 cd project
 ```
 
+1. Create virtual environment : virtualenv venv --python=python3.12
+2. Install requirements : pip install -r requirements.txt
+3. add .env: touch .env
+4. Run the application: python app/application.py
+
+
+Optional
+
 ## Build the Docker Image:
 
 ```
