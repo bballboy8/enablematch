@@ -75,8 +75,9 @@ def get_gpt_response(prompt):
 
 def test_gpt():
     """Test the GPT API by sending a sample prompt."""
-    prompt = "You are a job interviewer. Based on the following job description and candidate transcript, assess if the candidate is a good fit."
+    prompt = "Hi there! How are you doing today?"
     response = get_gpt_response(prompt)
     if response["status_code"] == 500:
         return response
-    return response["response"]
+    response = f"Response from Mode: {response['response']} Reason for completion: {response['finish_reason']} Prompt tokens: {response['prompt_tokens']} Completion tokens: {response['completion_tokens']}"
+    return response
