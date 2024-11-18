@@ -4,6 +4,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from routers import (
     auth_router,
+    candidate_analysis_router
 )
 
 
@@ -45,3 +46,4 @@ async def read_root():
 
 # Include routers
 project.include_router(auth_router.router, prefix="/api", tags=["Authentication"])
+project.include_router(candidate_analysis_router.router, prefix="/api", tags=["Candidate Analysis"])

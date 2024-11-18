@@ -16,3 +16,4 @@ MONGO_INDEX_FIELD = "_id"
 UPDATED_AT_FIELD = "updated_at"
 
 LOG_LEVEL = os.getenv("LOG_LEVEL", "DEBUG")
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
