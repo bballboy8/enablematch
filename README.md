@@ -1,4 +1,4 @@
-# FastAPI einstein-backend
+# FastAPI EnableMatch-backend
 
 This project is built using Python and requires Docker to run. It utilizes UVicorn as the ASGI server.
 
