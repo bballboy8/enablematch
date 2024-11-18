@@ -16,3 +16,12 @@ async def test_gpt(user_id:str="user"):
     response = await candidate_analysis_service.test_gpt(user_id)
     logger.info("Test GPT exit point")
     return JSONResponse(content={"response": response}, status_code=response["status_code"])
+
+
+@router.post("/analyze-candidate")
+async def analyze_candidate(job_description: str, transcript_json: dict):
+    """Analyze the candidate based on job description and transcript."""
+    logger.info("Analyze candidate entry point")
+    response = await candidate_analysis_service.analyze_candidate(job_description, transcript_json)
+    logger.info("Analyze candidate exit point")
+    return JSONResponse(content={"response": response}, status_code=response["status_code"])

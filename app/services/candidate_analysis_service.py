@@ -9,10 +9,15 @@ async def analyze_candidate(job_description, transcript_json):
         if transcript.get("status_code") == 500:
             return transcript
         prompt = helper_functions.create_prompt(job_description, transcript)
-        response = helper_functions.get_gpt_response(prompt)
+        system_prompt = helper_functions.get_system_prompt()
+        response = helper_functions.get_gpt_response(prompt, system_prompt)
         if response.get("status_code") == 500:
             return response
-        return {"response": response, "status_code": 200}
+        return {
+            "response": response["response"],
+            "status_code": 200,
+            "message": "Candidate analysis completed successfully.",
+        }
     except Exception as e:
         logger.error(f"Error in analyzing candidate: {e}")
         return {
