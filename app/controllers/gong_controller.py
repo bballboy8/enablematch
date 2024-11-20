@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Request, Depends
+from fastapi import APIRouter, Request, Depends, Query
 import services
 from logging_module import logger
 from fastapi.security import OAuth2PasswordRequestForm
@@ -21,8 +21,8 @@ async def get_gong_users(user_id: str = Depends(get_current_user_id)):
 
 @router.get("/get-calls-by-date-range")
 async def get_calls_by_date_range(
-    start_date: str,
-    end_date: Optional[str] = "",
+    start_date: str = Query(..., example="2024-11-08T13:00:00%2B00:00", description="Start date format"),
+    end_date: Optional[str] = Query(None, example="2024-11-08T13:00:00%2B00:00", description="End date format (optional)"),
     user_id: str = Depends(get_current_user_id),
 ):
     """Get calls by date range from Gong."""

@@ -23,6 +23,8 @@ async def analyze_candidate(job_description, call_id):
             return response
         return {
             "response": response["response"],
+            "call_id": call_id,
+            "job_description": job_description,
             "status_code": 200,
             "message": "Candidate analysis completed successfully.",
         }
