@@ -22,7 +22,9 @@ async def analyze_candidate(job_description, call_id, resume):
         if formatted_transcript.get("status_code") == 500:
             return formatted_transcript
 
-        prompt = helper_functions.create_prompt(job_description, transcript, resume_text["resume_text"])
+        input_transcript = formatted_transcript["transcript"]
+        input_resume = resume_text["resume_text"]
+        prompt = helper_functions.create_prompt(job_description, input_transcript, input_resume)
         system_prompt = helper_functions.get_system_prompt()
         response = helper_functions.get_gpt_response(prompt, system_prompt)
         if response.get("status_code") == 500:

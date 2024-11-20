@@ -25,17 +25,14 @@ def parse_transcript(transcript_json):
     """Extract and combine transcript text from JSON data."""
     try:
         conversation_transcript = ""
-        call_transcripts = transcript_json.get("callTranscripts", [])
-        for call_entry in call_transcripts:
-            transcript_sections = call_entry.get("transcript", [])
-            for section in transcript_sections:
-                speaker_id = section.get("speakerId", "Unknown Speaker")
-                sentences = section.get("sentences", [])
-                for sentence in sentences:
-                    conversation_transcript += (
-                        f"{speaker_id}: {sentence.get('text', '')}\n"
-                    )
-
+        transcript_sections = transcript_json.get("transcript", [])
+        for section in transcript_sections:
+            speaker_id = section.get("speakerId", "Unknown Speaker")
+            sentences = section.get("sentences", [])
+            for sentence in sentences:
+                conversation_transcript += (
+                    f"{speaker_id}: {sentence.get('text', '')}\n"
+                )
         return {"transcript": conversation_transcript.strip(), "status_code": 200}
     except Exception as e:
         return {
