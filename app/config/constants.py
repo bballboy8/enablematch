@@ -17,3 +17,6 @@ UPDATED_AT_FIELD = "updated_at"
 
 LOG_LEVEL = os.getenv("LOG_LEVEL", "DEBUG")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+GONG_USERNAME = os.getenv("GONG_USERNAME")
+GONG_PASSWORD = os.getenv("GONG_PASSWORD")
+GONG_BASE_URL = os.getenv("GONG_BASE_URL")

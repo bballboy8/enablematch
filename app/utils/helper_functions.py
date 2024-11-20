@@ -81,7 +81,7 @@ def get_gpt_response(prompt, system_prompt):
     """Send the prompt to GPT API and return the response."""
     try:
         response = client.chat.completions.create(
-            model="gpt-3.5-turbo",
+            model="gpt-4o",
             messages=[
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": prompt},
