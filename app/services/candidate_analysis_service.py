@@ -1,13 +1,21 @@
 from utils import helper_functions
 from logging_module import logger
+from utils.thirdparty import gong_api_service
 
 
-async def analyze_candidate(job_description, transcript_json):
+async def analyze_candidate(job_description, call_id):
     """Analyze the candidate based on job description and transcript."""
     try:
-        transcript = helper_functions.parse_transcript(transcript_json)
+        logger.info(f"Analyzing candidate with call_id {call_id}")
+        transcript = await gong_api_service.get_call_transcript_by_call_id(call_id)
         if transcript.get("status_code") == 500:
             return transcript
+        transcript = transcript["callTranscripts"][0]
+
+        formatted_transcript = helper_functions.parse_transcript(transcript)
+        if formatted_transcript.get("status_code") == 500:
+            return formatted_transcript
+
         prompt = helper_functions.create_prompt(job_description, transcript)
         system_prompt = helper_functions.get_system_prompt()
         response = helper_functions.get_gpt_response(prompt, system_prompt)

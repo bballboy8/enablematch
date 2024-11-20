@@ -66,7 +66,7 @@ def get_system_prompt():
         Your response should be professional, detailed, and well-structured to help the hiring manager make an informed decision.
         Your response should consist of a dictionary with the following keys
         - response: The summary and evaluation of the candidate.
-        - score: The score assigned to the candidate based on the evaluation.
+        - score: The score assigned to the candidate based on the evaluation out of 10.
         - decision: The final decision (Suitable, Not Suitable, Requires Further Evaluation).
         - reasons: The detailed reasons supporting your decision.
         And should be parsed in the following format:

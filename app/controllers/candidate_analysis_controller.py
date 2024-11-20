@@ -19,9 +19,9 @@ async def test_gpt(user_id:str="user"):
 
 
 @router.post("/analyze-candidate")
-async def analyze_candidate(job_description: str, transcript_json: dict):
+async def analyze_candidate(job_description: str, call_id: str):
     """Analyze the candidate based on job description and transcript."""
     logger.info("Analyze candidate entry point")
-    response = await candidate_analysis_service.analyze_candidate(job_description, transcript_json)
+    response = await candidate_analysis_service.analyze_candidate(job_description, call_id)
     logger.info("Analyze candidate exit point")
     return JSONResponse(content={"response": response}, status_code=response["status_code"])
