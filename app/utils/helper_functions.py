@@ -1,6 +1,8 @@
 from datetime import datetime
 from openai import OpenAI
 from config import constants
+from logging_module import logger
+import pdfplumber
 
 client = OpenAI(
     api_key=constants.OPENAI_API_KEY,
@@ -42,13 +44,16 @@ def parse_transcript(transcript_json):
         }
 
 
-def create_prompt(job_description, conversation_transcript):
+def create_prompt(job_description, conversation_transcript, resume_text):
     """Create a detailed GPT prompt using the job description and transcript."""
     return f"""
-            Here is a conversation transcript between a candidate and a hiring manager, along with the job description. Summarize the conversation and assess if the candidate is suitable for the role. Provide your decision and the reasons.
+            Here is a Resume Text and conversation transcript between a candidate and a hiring manager, along with the job description. Summarize the conversation and assess if the candidate is suitable for the role. Provide your decision and the reasons. You need put more weight on Resume Text and then conversation transcript to make a decision.
 
             Job Description:
             {job_description}
+
+            Resume Text:
+            {resume_text}
 
             Conversation Transcript:
             {conversation_transcript}
@@ -64,16 +69,11 @@ def get_system_prompt():
         3. Provide a clear decision (Suitable, Not Suitable, or Requires Further Evaluation) and explain the reasons for your decision based on the conversation and role requirements.
         Focus on evaluating the candidate's alignment with the job description and their overall suitability for the role.
         Your response should be professional, detailed, and well-structured to help the hiring manager make an informed decision.
-        Your response should consist of a dictionary with the following keys
+        Your response should consist of a Object with the following keys
         - response: The summary and evaluation of the candidate.
         - score: The score assigned to the candidate based on the evaluation out of 10.
         - decision: The final decision (Suitable, Not Suitable, Requires Further Evaluation).
         - reasons: The detailed reasons supporting your decision.
-        And should be parsed in the following format:
-        response:**Summary and evaluation of the candidate**
-        score:**Score assigned to the candidate**
-        decision:**Final decision**
-        reasons:**Detailed reasons supporting your decision**
     """
 
 
@@ -113,3 +113,25 @@ def test_gpt():
         return response
     response = f"Response from Mode: {response['response']} Reason for completion: {response['finish_reason']} Prompt tokens: {response['prompt_tokens']} Completion tokens: {response['completion_tokens']}"
     return response
+
+
+async def parse_pdf_file(resume):
+    try:
+        if not resume.filename.endswith(".pdf"):
+            return {
+                "error": "Invalid file format. Please upload a PDF file.",
+                "status_code": 400,
+            }
+        
+        resume_text = ""
+        with pdfplumber.open(resume.file) as pdf:
+            for page in pdf.pages:
+                resume_text += page.extract_text() or ""
+
+        return {"resume_text": resume_text, "status_code": 200}
+    except Exception as e:
+        logger.error(f"Error parsing resume: {e}")
+        return {
+            "error": "An error occurred while parsing the resume.",
+            "status_code": 500,
+        }

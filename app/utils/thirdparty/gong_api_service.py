@@ -56,10 +56,10 @@ async def get_call_transcript_by_call_id(call_id):
         payload = json.dumps({"filter": {"callIds": [call_id]}})
         response = requests.post( endpoint, headers=headers, data=payload)
         if response.status_code == 200:
-            return response.json()
+            return {"response": response.json(), "status_code": 200}
         else:
             print(f"Error: {response.status_code} - {response.text}")
-            return None
+            return {"error": response.text, "status_code": 500, "status": response.status_code}
     except Exception as e:
         print(f"Error: {e}")
-        return None
+        return {"error": str(e), "status_code": 500}
