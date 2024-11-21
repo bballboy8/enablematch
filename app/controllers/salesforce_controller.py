@@ -35,7 +35,7 @@ async def create_salesforce_contact(full_name: str, email: str, user_id: str = D
     return JSONResponse(content=response, status_code=response["status_code"])
 
 @router.post("/upload-resume")
-async def upload_resume_to_a_user(file: UploadFile = File(...), record_id: Optional[str] = None):
+async def upload_resume_to_a_user(file: UploadFile = File(...), record_id: Optional[str] = None, user_id: str = Depends(get_current_user_id)):
     """
     Endpoint to upload a file to Salesforce and link it to a record.
     
@@ -52,7 +52,7 @@ async def upload_resume_to_a_user(file: UploadFile = File(...), record_id: Optio
     return JSONResponse(content=response, status_code=200)
 
 @router.get("/get-linked-files")
-async def get_linked_files_from_salesforce(linked_entity_id: str):
+async def get_linked_files_from_salesforce(linked_entity_id: str, user_id: str = Depends(get_current_user_id)):
     """
     Endpoint to get files linked to a specific record in Salesforce.
     
@@ -69,7 +69,7 @@ async def get_linked_files_from_salesforce(linked_entity_id: str):
 
 
 @router.get("/download-file")
-async def download_file_from_salesforce(content_document_id: str):
+async def download_file_from_salesforce(content_document_id: str, user_id: str = Depends(get_current_user_id)):
     """
     Endpoint to download a file from Salesforce.
     
@@ -101,7 +101,7 @@ async def get_salesforce_user_first_document(salesforce_user_id: str, user_id: s
     return JSONResponse(content=response, status_code=response["status_code"])
 
 @router.post("/attach-note-to-user")
-async def attach_note_to_user( note_title: str, note_body: str, salesforce_user_id: str):
+async def attach_note_to_user( note_title: str, note_body: str, salesforce_user_id: str, user_id: str = Depends(get_current_user_id)):
     """
     Endpoint to attach a note to a Salesforce in Salesforce.
     
@@ -119,7 +119,7 @@ async def attach_note_to_user( note_title: str, note_body: str, salesforce_user_
     return JSONResponse(content=response, status_code=response["status_code"])
 
 @router.get("/get-salesforce-user-notes")
-async def get_salesforce_user_notes(salesforce_user_id: str):
+async def get_salesforce_user_notes(salesforce_user_id: str, user_id: str = Depends(get_current_user_id)):
     """
     Endpoint to get notes attached to a specific user in Salesforce.
     
