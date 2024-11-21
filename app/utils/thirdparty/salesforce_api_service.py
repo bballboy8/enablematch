@@ -169,6 +169,8 @@ class SalesforceApiService:
         :return: ContentNoteId of the created note.
         """
         try:
+            # Convert note_body to base64
+            note_body = base64.b64encode(note_body.encode()).decode("utf-8")
             content_note = {
                 "Title": note_title,
                 "Content": note_body  
@@ -189,12 +191,35 @@ class SalesforceApiService:
             logger.error(f"Error attaching note to resume: {e}")
             return {"message": f"An error occurred while attaching note to resume: {e}", "status_code": 500}
         
+
+    def get_note_content(self, content_id):
+        """
+        Retrieve the actual content of a Salesforce note using the Content URL.
+
+        :param note_id: The Salesforce ContentNote ID.
+        :return: The decoded content of the note.
+        """
+        try:
+            note_content_url = f"{self.sf.base_url}/sobjects/ContentNote/{content_id}/Content"
+            headers = {"Authorization": f"Bearer {self.sf.session_id}"}
+            response = requests.get(note_content_url, headers=headers)
+            
+            if response.status_code == 200:
+                note_content = response.text
+                return {"content": note_content, "status_code": 200}
+            else:
+                return {"message": "Error fetching note content", "status_code": response.status_code}
+        except Exception as e:
+            logger.error(f"Error fetching note content: {e}")
+            return {"message": f"An error occurred while fetching note content: {e}", "status_code": 500}
+
+
     def get_salesforce_user_notes(self, linked_entity_id):
         """
         Get notes attached to a specific record in Salesforce.
         
         :param linked_entity_id: Salesforce record ID.
-        :return: List of notes attached to the record.
+        :return: List of notes attached to the record with title and content.
         """
         try:
             query = f"SELECT ContentDocumentId FROM ContentDocumentLink WHERE LinkedEntityId = '{linked_entity_id}'"
@@ -203,8 +228,18 @@ class SalesforceApiService:
 
             notes = []
             for content_document_id in content_document_ids:
-                note_info = self.sf.query(f"SELECT Id, Title FROM ContentNote WHERE Id = '{content_document_id}'")["records"]
-                notes.append(note_info)
+                note_info = self.sf.query(f"SELECT Id, Title, Content FROM ContentNote WHERE Id = '{content_document_id}'")["records"]
+
+                if note_info:
+                    note_content = self.get_note_content(note_info[0]["Id"])
+                    if note_content["status_code"] != 200:
+                        continue
+                    notes.append({
+                        "Id": note_info[0]["Id"],
+                        "Title": note_info[0]["Title"],
+                        "Content": note_content["content"]
+                    })
+
             return {"notes": notes, "status_code": 200}
         except Exception as e:
             logger.error(f"Error fetching notes from Salesforce: {e}")
