@@ -21,7 +21,7 @@ async def get_salesforce_data(query):
             "response": f"An error occurred while fetching the Salesforce data.{e}",
             "status_code": 500,
         }
-    
+
 async def create_salesforce_contact(full_name,email):
     """Create a contact in Salesforce."""
     try:
@@ -41,7 +41,7 @@ async def create_salesforce_contact(full_name,email):
             "response": f"An error occurred while creating the Salesforce contact.{e}",
             "status_code": 500,
         }
-    
+
 async def get_salesforce_contacts():
     """Get contacts from Salesforce."""
     try:
@@ -54,7 +54,7 @@ async def get_salesforce_contacts():
             "response": f"An error occurred while fetching the Salesforce contacts: {e}",
             "status_code": 500,
         }
-    
+
 async def get_salesforce_contacts():
     """Get contacts from Salesforce."""
     try:
@@ -102,7 +102,7 @@ async def get_linked_files_from_salesforce(linked_entity_id):
             "response": f"An error occurred while fetching linked files from Salesforce: {e}",
             "status_code": 500,
         }
-    
+
 async def download_file_from_salesforce(content_document_id):
     """Download a file from Salesforce."""
     try:
@@ -119,7 +119,7 @@ async def download_file_from_salesforce(content_document_id):
             "response": f"An error occurred while downloading the file from Salesforce: {e}",
             "status_code": 500,
         }
-    
+
 async def get_salesforce_user_first_document(salesforce_user_id):
     """Get the first document linked to a user in Salesforce."""
     try:
@@ -132,5 +132,34 @@ async def get_salesforce_user_first_document(salesforce_user_id):
         logger.error(f"Error while fetching the first document linked to the user: {e}")
         return {
             "response": f"An error occurred while fetching the first document linked to the user: {e}",
+            "status_code": 500,
+        }
+
+async def attach_note_to_salesforce_user(note_title, note_body, linked_entity_id):
+    """Attach a note to a resume in Salesforce."""
+    try:
+        salesforce_instance = SalesforceApiService()
+        response = salesforce_instance.attach_note_to_salesforce_user(note_title, note_body, linked_entity_id)
+        return {"response": response, "status_code": 200}
+    except Exception as e:
+        logger.error(f"Error while attaching a note to the resume: {e}")
+        return {
+            "response": f"An error occurred while attaching a note to the resume: {e}",
+            "status_code": 500,
+        }
+
+
+async def get_salesforce_user_notes(linked_entity_id):
+    """Get notes attached to a specific record in Salesforce."""
+    try:
+        salesforce_instance = SalesforceApiService()
+        notes = salesforce_instance.get_salesforce_user_notes(linked_entity_id)
+        if notes["status_code"] == 500:
+            return notes
+        return {"response": notes["notes"], "status_code": 200}
+    except Exception as e:
+        logger.error(f"Error while fetching notes from Salesforce: {e}")
+        return {
+            "response": f"An error occurred while fetching notes from Salesforce: {e}",
             "status_code": 500,
         }

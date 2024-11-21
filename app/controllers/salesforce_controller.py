@@ -99,3 +99,37 @@ async def get_salesforce_user_first_document(salesforce_user_id: str, user_id: s
     response = await salesforce_service.get_salesforce_user_first_document(salesforce_user_id)
     logger.info("Get Salesforce User First Document exit point")
     return JSONResponse(content=response, status_code=response["status_code"])
+
+@router.post("/attach-note-to-user")
+async def attach_note_to_user( note_title: str, note_body: str, salesforce_user_id: str):
+    """
+    Endpoint to attach a note to a Salesforce in Salesforce.
+    
+    Parameters:
+    - note_title: Title of the note.
+    - note_body: Body of the note.
+    - salesforce_user_id: Salesforce user ID.
+    
+    Returns:
+    - Success message.
+    """
+    logger.info("Attach Note to Resume entry point")
+    response = await salesforce_service.attach_note_to_salesforce_user(note_title, note_body, salesforce_user_id)
+    logger.info("Attach Note to Resume exit point")
+    return JSONResponse(content=response, status_code=response["status_code"])
+
+@router.get("/get-salesforce-user-notes")
+async def get_salesforce_user_notes(salesforce_user_id: str):
+    """
+    Endpoint to get notes attached to a specific user in Salesforce.
+    
+    Parameters:
+    - salesforce_user_id: Salesforce user ID.
+    
+    Returns:
+    - List of notes attached to the user.
+    """
+    logger.info("Get Salesforce User Notes entry point")
+    response = await salesforce_service.get_salesforce_user_notes(salesforce_user_id)
+    logger.info("Get Salesforce User Notes exit point")
+    return JSONResponse(content=response, status_code=response["status_code"])

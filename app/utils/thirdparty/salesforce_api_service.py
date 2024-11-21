@@ -158,3 +158,54 @@ class SalesforceApiService:
         except Exception as e:
             logger.error(f"Error fetching linked files from Salesforce: {e}")
             return {"message": f"An error occurred while fetching linked files from Salesforce: {e}", "status_code": 500}
+        
+    def attach_note_to_salesforce_user(self, note_title, note_body, linked_entity_id):
+        """
+        Attach a note to a resume (file) in Salesforce.
+        
+        :param note_title: The title of the note.
+        :param note_body: The body/content of the note.
+        :param linked_entity_id: The ID of the Salesforce record (e.g., Account, Opportunity, etc.) to link the note.
+        :return: ContentNoteId of the created note.
+        """
+        try:
+            content_note = {
+                "Title": note_title,
+                "Content": note_body  
+            }
+
+            content_note_response = self.sf.ContentNote.create(content_note)
+            content_document_id = content_note_response["id"]            
+
+            self.sf.ContentDocumentLink.create({
+                "ContentDocumentId": content_document_id, 
+                "LinkedEntityId": linked_entity_id,  
+                "ShareType": "V",
+                "Visibility": "AllUsers"
+            })
+
+            return {"content_note_id": content_document_id, "status_code": 200}
+        except Exception as e:
+            logger.error(f"Error attaching note to resume: {e}")
+            return {"message": f"An error occurred while attaching note to resume: {e}", "status_code": 500}
+        
+    def get_salesforce_user_notes(self, linked_entity_id):
+        """
+        Get notes attached to a specific record in Salesforce.
+        
+        :param linked_entity_id: Salesforce record ID.
+        :return: List of notes attached to the record.
+        """
+        try:
+            query = f"SELECT ContentDocumentId FROM ContentDocumentLink WHERE LinkedEntityId = '{linked_entity_id}'"
+            content_document_links = self.sf.query(query)["records"]
+            content_document_ids = [link["ContentDocumentId"] for link in content_document_links]
+
+            notes = []
+            for content_document_id in content_document_ids:
+                note_info = self.sf.query(f"SELECT Id, Title FROM ContentNote WHERE Id = '{content_document_id}'")["records"]
+                notes.append(note_info)
+            return {"notes": notes, "status_code": 200}
+        except Exception as e:
+            logger.error(f"Error fetching notes from Salesforce: {e}")
+            return {"message": f"An error occurred while fetching notes from Salesforce: {e}", "status_code": 500}
