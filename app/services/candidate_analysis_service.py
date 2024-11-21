@@ -6,14 +6,24 @@ from utils.thirdparty import gong_api_service
 async def analyze_candidate(job_description, call_id, salesforce_user_id):
     """Analyze the candidate based on job description and transcript."""
     try:
-
+        # Salesforce Resume
         logger.info(f"Fetching resume content for candidate with salesforce_user_id {salesforce_user_id}")
         resume_response = await helper_functions.get_content_of_pdf_from_salesforce_user(salesforce_user_id)
         if resume_response.get("status_code") != 200:
             return resume_response       
         input_resume = resume_response["file_content"]
         logger.info(f"Resume content fetched successfully for candidate with salesforce_user_id {salesforce_user_id}")
+
+
+        # Salesforce Notes
+        logger.info(f"Fetching notes content for candidate with salesforce_user_id {salesforce_user_id}")
+        notes_response = await helper_functions.get_salesforce_user_notes_first_record(salesforce_user_id)
+        if notes_response.get("status_code") != 200:
+            return notes_response
+        notes = notes_response["notes"]
+        logger.info(f"Notes content fetched successfully for candidate with salesforce_user_id {salesforce_user_id}")
         
+        # Gong Transcript
         if call_id:
             logger.info(f"Analyzing candidate with call_id {call_id}")
             transcript = await gong_api_service.get_call_transcript_by_call_id(call_id)
@@ -28,7 +38,7 @@ async def analyze_candidate(job_description, call_id, salesforce_user_id):
         else:
             input_transcript = ""
 
-        prompt = helper_functions.create_prompt(job_description, input_transcript, input_resume)
+        prompt = helper_functions.create_prompt(job_description, input_transcript, input_resume, notes)
         system_prompt = helper_functions.get_system_prompt()
         response = helper_functions.get_gpt_response(prompt, system_prompt)
         if response.get("status_code") == 500:

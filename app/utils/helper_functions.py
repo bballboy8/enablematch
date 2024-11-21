@@ -3,7 +3,7 @@ from openai import OpenAI
 from config import constants
 from logging_module import logger
 import pdfplumber
-from services.salesforce_service import get_salesforce_user_first_document
+from services.salesforce_service import get_salesforce_user_first_document, get_salesforce_user_notes
 from io import BytesIO
 
 client = OpenAI(
@@ -43,24 +43,25 @@ def parse_transcript(transcript_json):
         }
 
 
-def create_prompt(job_description, conversation_transcript=None, resume_text=None):
+def create_prompt(job_description, conversation_transcript=None, resume_text=None, notes=None):
     """Create a detailed GPT prompt using the job description, conversation transcript, and resume text."""
     
     prompt = f"""
             Here is a Job Description. Summarize the conversation and assess if the candidate is suitable for the role. 
-            Provide your decision and the reasons. You need to put more weight on Resume Text and then Conversation Transcript to make a decision.
+            Provide your decision and the reasons. You need to put more weight on Resume Text, Notes and then Conversation Transcript to make a decision.
 
             Job Description:
             {job_description}
             """
     
-    # Add Resume Text if provided
     if resume_text:
         prompt += f"\n\nResume Text:\n{resume_text}"
 
-    # Add Conversation Transcript if provided
     if conversation_transcript:
         prompt += f"\n\nConversation Transcript:\n{conversation_transcript}"
+
+    if notes:
+        prompt += f"\n\nNotes:\n{notes}"
 
     return prompt
 
@@ -157,6 +158,34 @@ async def get_content_of_pdf_from_salesforce_user(salesforce_user_id):
                 file_content += page.extract_text() or ""
 
         return {"file_content": file_content, "status_code": 200}
+
+    except Exception as e:
+        logger.error(f"Error fetching file content from Salesforce: {e}", exc_info=True)
+        return {
+            "error": "An error occurred while fetching file content.",
+            "status_code": 500,
+        }
+
+async def get_salesforce_user_notes_first_record(salesforce_user_id):
+    try:
+        response = await get_salesforce_user_notes(salesforce_user_id)
+
+        if response.get("status_code") != 200:
+            return response
+        
+        notes = response['response']
+
+        if len(notes) == 0:
+            return {
+                "error": "No notes found for the user.",
+                "status_code": 404,
+            }
+        
+        note_body = notes[0].get("Content", "")
+        note_title = notes[0].get("Title", "")
+        note_string = f"Note Title: {note_title}\nNote Body: {note_body}"
+
+        return {"notes": note_string, "status_code": 200}
 
     except Exception as e:
         logger.error(f"Error fetching file content from Salesforce: {e}", exc_info=True)
