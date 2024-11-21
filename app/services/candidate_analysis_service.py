@@ -1,6 +1,7 @@
 from utils import helper_functions
 from logging_module import logger
 from utils.thirdparty import gong_api_service
+import json
 
 
 async def analyze_candidate(job_description, call_id, salesforce_user_id):
@@ -43,8 +44,10 @@ async def analyze_candidate(job_description, call_id, salesforce_user_id):
         response = helper_functions.get_gpt_response(prompt, system_prompt)
         if response.get("status_code") == 500:
             return response
+        
+        formatted_response = json.loads(response["response"])
         return {
-            "response": response["response"],
+            "response": formatted_response,
             "call_id": call_id,
             "salesforce_user_id": salesforce_user_id,
             "job_description": job_description,
