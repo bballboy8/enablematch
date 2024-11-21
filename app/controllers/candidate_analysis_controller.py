@@ -6,6 +6,7 @@ from utils.dependencies import get_current_user_id
 from services import candidate_analysis_service
 from fastapi.responses import JSONResponse
 from typing import Optional
+from utils import helper_functions
 
 router = APIRouter()
 
@@ -33,6 +34,18 @@ async def analyze_candidate(
         job_description, call_id, resume
     )
     logger.info("Analyze candidate exit point")
+    return JSONResponse(
+        content={"response": response}, status_code=response["status_code"]
+    )
+
+@router.get("/get-content-of-pdf-from-salesforce-user")
+async def get_content_of_pdf_from_salesforce_user(salesforce_user_id: str):
+    """Get the content of the first PDF file from a Salesforce user."""
+    logger.info("Get content of PDF from Salesforce user entry point")
+    response = await helper_functions.get_content_of_pdf_from_salesforce_user(
+        salesforce_user_id
+    )
+    logger.info("Get content of PDF from Salesforce user exit point")
     return JSONResponse(
         content={"response": response}, status_code=response["status_code"]
     )

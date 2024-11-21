@@ -119,3 +119,18 @@ async def download_file_from_salesforce(content_document_id):
             "response": f"An error occurred while downloading the file from Salesforce: {e}",
             "status_code": 500,
         }
+    
+async def get_salesforce_user_first_document(salesforce_user_id):
+    """Get the first document linked to a user in Salesforce."""
+    try:
+        salesforce_instance = SalesforceApiService()
+        document = salesforce_instance.get_salesforce_user_first_document(salesforce_user_id)
+        if document["status_code"] == 500:
+            return document
+        return {"response": document, "status_code": 200}
+    except Exception as e:
+        logger.error(f"Error while fetching the first document linked to the user: {e}")
+        return {
+            "response": f"An error occurred while fetching the first document linked to the user: {e}",
+            "status_code": 500,
+        }

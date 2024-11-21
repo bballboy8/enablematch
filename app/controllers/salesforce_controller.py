@@ -57,10 +57,10 @@ async def get_linked_files_from_salesforce(linked_entity_id: str):
     Endpoint to get files linked to a specific record in Salesforce.
     
     Parameters:
-    - linked_entity_id: Salesforce record ID.
+    - linked_entity_id: Salesforce record/user ID.
     
     Returns:
-    - List of files linked to the record.
+    - List of files linked to the record/user.
     """
     logger.info("Get Linked Files entry point")
     response = await salesforce_service.get_linked_files_from_salesforce(linked_entity_id)
@@ -82,4 +82,20 @@ async def download_file_from_salesforce(content_document_id: str):
     logger.info("Download File entry point")
     response = await salesforce_service.download_file_from_salesforce(content_document_id)
     logger.info("Download File exit point")
+    return JSONResponse(content=response, status_code=response["status_code"])
+
+@router.get("/get-salesforce-user-first-document")
+async def get_salesforce_user_first_document(salesforce_user_id: str, user_id: str = Depends(get_current_user_id)):
+    """
+    Endpoint to get the first document linked to a specific user in Salesforce.
+    
+    Parameters:
+    - salesforce_user_id: Salesforce user ID.
+    
+    Returns:
+    - ContentDocumentId of the first document linked to the user.
+    """
+    logger.info("Get Salesforce User First Document entry point")
+    response = await salesforce_service.get_salesforce_user_first_document(salesforce_user_id)
+    logger.info("Get Salesforce User First Document exit point")
     return JSONResponse(content=response, status_code=response["status_code"])

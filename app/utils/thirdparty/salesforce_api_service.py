@@ -124,3 +124,37 @@ class SalesforceApiService:
         except Exception as e:
             logger.error(f"Error downloading file from Salesforce: {e}")
             return None
+
+    def get_salesforce_user_first_document(self, user_id):
+        """
+        Get the first document linked to a specific user in Salesforce.
+
+        :param user_id: Salesforce user ID.
+        :return: ContentDocumentId of the first document linked to the user.
+        """
+        try:
+            query = f"SELECT ContentDocumentId FROM ContentDocumentLink WHERE LinkedEntityId = '{user_id}'"
+            content_document_links = self.sf.query(query)["records"]
+
+            if not content_document_links:
+                return {"message": "No documents linked to the user", "status_code": 404}
+            content_document_id = content_document_links[0]["ContentDocumentId"]
+
+            query = f"SELECT VersionData FROM ContentVersion WHERE ContentDocumentId = '{content_document_id}'"
+            version_data_url = self.sf.query(query)["records"][0]["VersionData"]
+
+            base_url = self.sf.sf_instance
+            full_url = f"https://{base_url}{version_data_url}"
+
+            headers = {"Authorization": f"Bearer {self.sf.session_id}"}
+            response = requests.get(full_url, headers=headers)
+            if response.status_code == 200:
+                return {"file_content": response.content, "status_code": 200}
+            else:
+                return {
+                    "message": "Error downloading file from Salesforce",
+                    "status_code": 500,
+                }
+        except Exception as e:
+            logger.error(f"Error fetching linked files from Salesforce: {e}")
+            return {"message": f"An error occurred while fetching linked files from Salesforce: {e}", "status_code": 500}

@@ -3,6 +3,8 @@ from openai import OpenAI
 from config import constants
 from logging_module import logger
 import pdfplumber
+from services.salesforce_service import get_salesforce_user_first_document
+from io import BytesIO
 
 client = OpenAI(
     api_key=constants.OPENAI_API_KEY,
@@ -119,7 +121,7 @@ async def parse_pdf_file(resume):
                 "error": "Invalid file format. Please upload a PDF file.",
                 "status_code": 400,
             }
-        
+
         resume_text = ""
         with pdfplumber.open(resume.file) as pdf:
             for page in pdf.pages:
@@ -130,5 +132,29 @@ async def parse_pdf_file(resume):
         logger.error(f"Error parsing resume: {e}")
         return {
             "error": "An error occurred while parsing the resume.",
+            "status_code": 500,
+        }
+
+
+async def get_content_of_pdf_from_salesforce_user(salesforce_user_id):
+    try:
+        response = await get_salesforce_user_first_document(salesforce_user_id)
+
+        if response.get("status_code") != 200:
+            return response
+
+        file_content_bytes = response["response"]["file_content"]
+
+        file_content = ""
+        with pdfplumber.open(BytesIO(file_content_bytes)) as pdf:
+            for page in pdf.pages:
+                file_content += page.extract_text() or ""
+
+        return {"file_content": file_content, "status_code": 200}
+
+    except Exception as e:
+        logger.error(f"Error fetching file content from Salesforce: {e}", exc_info=True)
+        return {
+            "error": "An error occurred while fetching file content.",
             "status_code": 500,
         }
