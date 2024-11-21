@@ -22,6 +22,26 @@ async def get_salesforce_data(query):
             "status_code": 500,
         }
     
+async def create_salesforce_contact(full_name,email):
+    """Create a contact in Salesforce."""
+    try:
+        salesforce_instance = SalesforceApiService()
+        data = salesforce_instance.create_salesforce_contact(full_name,email)
+        if data:
+            return {"response": data, "status_code": 200}
+        else:
+            return {
+                "response": f"An error occurred while creating a contact in Salesforce.{full_name} {email}",
+                "status_code": 500,
+            }
+
+    except Exception as e:
+        logger.error(f"Error while creating Salesforce contact: {e}")
+        return {
+            "response": f"An error occurred while creating the Salesforce contact.{e}",
+            "status_code": 500,
+        }
+    
 async def get_salesforce_contacts():
     """Get contacts from Salesforce."""
     try:

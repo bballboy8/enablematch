@@ -26,6 +26,14 @@ async def get_salesforce_contacts(user_id: str = Depends(get_current_user_id)):
     logger.info("Get Salesforce Contacts exit point")
     return JSONResponse(content=response, status_code=response["status_code"])
 
+@router.post("/create-salesforce-contact")
+async def create_salesforce_contact(full_name: str, email: str, user_id: str = Depends(get_current_user_id)):
+    """Create a contact in Salesforce."""
+    logger.info("Create Salesforce Contact entry point")
+    response = await salesforce_service.create_salesforce_contact(full_name, email)
+    logger.info("Create Salesforce Contact exit point")
+    return JSONResponse(content=response, status_code=response["status_code"])
+
 @router.post("/upload-resume")
 async def upload_resume_to_a_user(file: UploadFile = File(...), record_id: Optional[str] = None):
     """

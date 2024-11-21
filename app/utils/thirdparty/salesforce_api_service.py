@@ -26,11 +26,12 @@ class SalesforceApiService:
         """
         return self.sf.query(f"SELECT * FROM {object_name} WHERE Id = '{object_id}'")
 
-    def create_salesforce_data(self, object_name, data):
+    def create_salesforce_contact(self, full_name, email):
         """
-        Example data: { 'Name': 'Test Account', 'Phone': '1234567890' }
+        Example contact_data: {"LastName": "John Doe", "Email": "example@gmail.com"}
         """
-        return self.sf.object_name.create(data)
+        contact_data = {"LastName": full_name, "Email": email}
+        return self.sf.Contact.create(contact_data)
 
     def get_salesforce_contacts(self):
         return self.sf.query_all("SELECT Id, Name, Email FROM Contact")
