@@ -1,7 +1,5 @@
-from fastapi import APIRouter, Request, Depends, UploadFile, File, Form, HTTPException
-import services
+from fastapi import APIRouter
 from logging_module import logger
-from fastapi.security import OAuth2PasswordRequestForm
 from utils.dependencies import get_current_user_id
 from services import candidate_analysis_service
 from fastapi.responses import JSONResponse
@@ -24,19 +22,20 @@ async def test_gpt(user_id: str = "user"):
 
 @router.post("/analyze-candidate")
 async def analyze_candidate(
-    call_id: str ,
-    job_description: str = Form(...),
-    resume: Optional[UploadFile] = File(None),
+    job_description: str,
+    salesforce_user_id: str,
+    call_id: Optional[str] = "",
 ):
     """Analyze the candidate based on job description and transcript."""
     logger.info("Analyze candidate entry point")
     response = await candidate_analysis_service.analyze_candidate(
-        job_description, call_id, resume
+        job_description, call_id, salesforce_user_id
     )
     logger.info("Analyze candidate exit point")
     return JSONResponse(
         content={"response": response}, status_code=response["status_code"]
     )
+
 
 @router.get("/get-content-of-pdf-from-salesforce-user")
 async def get_content_of_pdf_from_salesforce_user(salesforce_user_id: str):

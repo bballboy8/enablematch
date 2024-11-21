@@ -43,20 +43,26 @@ def parse_transcript(transcript_json):
         }
 
 
-def create_prompt(job_description, conversation_transcript, resume_text):
-    """Create a detailed GPT prompt using the job description and transcript."""
-    return f"""
-            Here is a Resume Text and conversation transcript between a candidate and a hiring manager, along with the job description. Summarize the conversation and assess if the candidate is suitable for the role. Provide your decision and the reasons. You need put more weight on Resume Text and then conversation transcript to make a decision.
+def create_prompt(job_description, conversation_transcript=None, resume_text=None):
+    """Create a detailed GPT prompt using the job description, conversation transcript, and resume text."""
+    
+    prompt = f"""
+            Here is a Job Description. Summarize the conversation and assess if the candidate is suitable for the role. 
+            Provide your decision and the reasons. You need to put more weight on Resume Text and then Conversation Transcript to make a decision.
 
             Job Description:
             {job_description}
-
-            Resume Text:
-            {resume_text}
-
-            Conversation Transcript:
-            {conversation_transcript}
             """
+    
+    # Add Resume Text if provided
+    if resume_text:
+        prompt += f"\n\nResume Text:\n{resume_text}"
+
+    # Add Conversation Transcript if provided
+    if conversation_transcript:
+        prompt += f"\n\nConversation Transcript:\n{conversation_transcript}"
+
+    return prompt
 
 
 def get_system_prompt():
