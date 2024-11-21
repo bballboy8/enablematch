@@ -5,7 +5,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from routers import (
     auth_router,
     candidate_analysis_router,
-    gong_router
+    gong_router,
+    salesforce_router
 )
 
 
@@ -49,3 +50,4 @@ async def read_root():
 project.include_router(auth_router.router, prefix="/api", tags=["Authentication"])
 project.include_router(candidate_analysis_router.router, prefix="/api", tags=["Candidate Analysis"])
 project.include_router(gong_router.router, prefix="/api", tags=["Gong"])
+project.include_router(salesforce_router.router, prefix="/api", tags=["Salesforce"])
