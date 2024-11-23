@@ -20,7 +20,7 @@ async def analyze_candidate(job_description, call_id, salesforce_user_id):
         logger.info(f"Fetching notes content for candidate with salesforce_user_id {salesforce_user_id}")
         notes_response = await helper_functions.get_salesforce_user_notes_first_record(salesforce_user_id)
         if notes_response.get("status_code") != 200:
-            return notes_response
+            notes_response["notes"] = ""
         notes = notes_response["notes"]
         logger.info(f"Notes content fetched successfully for candidate with salesforce_user_id {salesforce_user_id}")
         
@@ -44,8 +44,9 @@ async def analyze_candidate(job_description, call_id, salesforce_user_id):
         response = helper_functions.get_gpt_response(prompt, system_prompt)
         if response.get("status_code") == 500:
             return response
-        
-        formatted_response = json.loads(response["response"])
+        raw_response = response.get('response', '')
+        cleaned_json_string = raw_response.strip('```json').strip('```').strip()
+        formatted_response = json.loads(cleaned_json_string)
         return {
             "response": formatted_response,
             "call_id": call_id,

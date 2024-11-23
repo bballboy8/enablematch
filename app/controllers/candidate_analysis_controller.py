@@ -5,6 +5,7 @@ from services import candidate_analysis_service
 from fastapi.responses import JSONResponse
 from typing import Optional
 from utils import helper_functions
+from blueprints.candidate_analysis_blueprint import CandidateAnalysisRequestBody
 
 router = APIRouter()
 
@@ -22,7 +23,7 @@ async def test_gpt(user_id: str = Depends(get_current_user_id)):
 
 @router.post("/analyze-candidate")
 async def analyze_candidate(
-    job_description: str,
+    request: CandidateAnalysisRequestBody,
     salesforce_user_id: str,
     call_id: Optional[str] = "",
     user_id: str = Depends(get_current_user_id),
@@ -30,7 +31,7 @@ async def analyze_candidate(
     """Analyze the candidate based on job description and transcript."""
     logger.info("Analyze candidate entry point")
     response = await candidate_analysis_service.analyze_candidate(
-        job_description, call_id, salesforce_user_id
+        request.job_description, call_id, salesforce_user_id
     )
     logger.info("Analyze candidate exit point")
     return JSONResponse(
