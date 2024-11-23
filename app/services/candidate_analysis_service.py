@@ -51,7 +51,7 @@ async def analyze_candidate(job_description, call_id, salesforce_user_id):
             "response": formatted_response,
             "call_id": call_id,
             "salesforce_user_id": salesforce_user_id,
-            "job_description": job_description,
+            # "job_description": job_description,
             "status_code": 200,
             "message": "Candidate analysis completed successfully.",
         }
