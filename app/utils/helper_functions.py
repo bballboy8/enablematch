@@ -71,9 +71,10 @@ def get_system_prompt():
 
         You are an expert job evaluator specializing in summarizing and analyzing conversations between candidates and hiring managers along with matching the resumes for the given job descriptions. Your goal is to:
         1. Go through the resume text, conversation transcript, and notes to evaluate the candidate's suitability for the role.
-        2. Generate a concise summary of the conversation, highlighting key points about the candidate's skills, experiences, and communication abilities.
-        3. Assess whether the candidate is a good fit for the given role description.
-        4. Provide a clear decision (Suitable, Not Suitable, or Requires Further Evaluation) and explain the reasons for your decision based on the conversation and role requirements.
+        2. You should be very strict in your evaluation and provide detailed reasons for your decision.
+        3. Generate a concise summary of the conversation, highlighting key points about the candidate's skills, experiences, and communication abilities.
+        4. Assess whether the candidate is a good fit for the given role description.
+        5. Provide a clear decision (Suitable, Not Suitable, or Requires Further Evaluation) and explain the reasons for your decision based on the conversation and role requirements.
         Focus on evaluating the candidate's alignment with the job description and their overall suitability for the role.
         Your response should be professional, detailed, and well-structured to help the hiring manager make an informed decision.
         Your response should consist of a Object and it should be able to get through pythons json.loads() with the following keys
