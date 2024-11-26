@@ -101,3 +101,19 @@ async def save_gong_record_in_db(records):
             "response": f"An error occurred while saving records in database.{e}",
             "status_code": 500,
         }
+    
+async def get_matching_records_with_title(title):
+    """Get matching records with title from database."""
+    try:
+        call_details_collection = db[constants.CALL_DETAILS_COLLECTION]
+        records = await call_details_collection.find({"title": {"$regex": title, "$options": "i"}}).to_list(length=None)
+        return {"response": [{
+                record["gong_id"] : record["title"]
+            }
+            for record in records], "status_code": 200}
+    except Exception as e:
+        logger.error(f"Error while fetching records from database: {e}")
+        return {
+            "response": f"An error occurred while fetching records from database.{e}",
+            "status_code": 500,
+        }

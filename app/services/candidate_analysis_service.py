@@ -25,16 +25,28 @@ async def analyze_candidate(job_description, call_id, salesforce_user_id):
         logger.info(f"Notes content fetched successfully for candidate with salesforce_user_id {salesforce_user_id}")
         
         # Gong Transcript
+        conversation_summary = {}
         if call_id:
             logger.info(f"Analyzing candidate with call_id {call_id}")
             transcript = await gong_api_service.get_call_transcript_by_call_id(call_id)
             if transcript.get("status_code") == 500:
                 return transcript
-            transcript = transcript["response"]["callTranscripts"][0]
-            formatted_transcript = helper_functions.parse_transcript(transcript)
-            if formatted_transcript.get("status_code") == 500:
-                return formatted_transcript
-            input_transcript = formatted_transcript["transcript"]
+            formatted_transcript = ""
+            call_transcripts = transcript["response"]["callTranscripts"]
+
+            for i in range(len(call_transcripts)):
+                transcript = call_transcripts[i]
+                formatted_transcript_response = helper_functions.parse_transcript(transcript)
+                if formatted_transcript_response.get("status_code") == 500:
+                    continue
+                # Summnarize the transcript
+                summarized_conversation_response = await helper_functions.summarize_conversation(formatted_transcript_response["transcript"])
+                if summarized_conversation_response.get("status_code") == 500:
+                    continue
+
+                formatted_transcript += summarized_conversation_response["response"]
+                conversation_summary[call_transcripts[i]["callId"]] = summarized_conversation_response["response"]
+            input_transcript = formatted_transcript
             logger.info(f"Transcript fetched successfully for candidate with call_id {call_id}")
         else:
             input_transcript = ""
@@ -51,7 +63,7 @@ async def analyze_candidate(job_description, call_id, salesforce_user_id):
             "response": formatted_response,
             "call_id": call_id,
             "salesforce_user_id": salesforce_user_id,
-            # "job_description": job_description,
+            "conversation_summary": conversation_summary,
             "status_code": 200,
             "message": "Candidate analysis completed successfully.",
         }

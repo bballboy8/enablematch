@@ -50,3 +50,13 @@ async def get_gong_extensive_call_data(
     response = await gong_service.gong_data_loader()
     logger.info("Get Gong Extensive Call Data exit point")
     return JSONResponse(content=response, status_code=response["status_code"])
+
+@router.get("/get-matching-calls")
+async def get_matching_calls(
+    search_query: str = Query(..., example="Enablematch", description="Search query"),
+):
+    """Get matching calls with title from Gong."""
+    logger.info("Get Matching Calls title entry point")
+    response = await gong_service.get_matching_records_with_title(search_query)
+    logger.info("Get Matching Calls title exit point")
+    return JSONResponse(content=response, status_code=response["status_code"])

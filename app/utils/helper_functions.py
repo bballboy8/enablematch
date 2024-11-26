@@ -198,3 +198,25 @@ async def get_salesforce_user_notes_first_record(salesforce_user_id):
             "error": "An error occurred while fetching file content.",
             "status_code": 500,
         }
+    
+async def summarize_conversation(conversation_transcript):
+    try:
+        response = client.chat.completions.create(
+            model="gpt-4o",
+            messages=[
+                {"role": "system", "content": "You are an expert summarizer. You are going to extract the Strength, Weakness, Overall how is the conversation for job role and summarize the conversation."},
+                {"role": "user", "content": conversation_transcript},
+            ],
+        )
+        finish_reason = response.choices[0].finish_reason
+        response_data = response.choices[0].message.content
+        return {
+            "response": response_data,
+            "finish_reason": finish_reason,
+            "status_code": 200,
+        }
+    except Exception as e:
+        return {
+            "response": f"An error occurred while processing the request: {e}",
+            "status_code": 500,
+        }

@@ -26,7 +26,6 @@ async def analyze_candidate(
     request: CandidateAnalysisRequestBody,
     salesforce_user_id: str,
     call_id: Optional[list[str]] = None,
-    user_id: str = Depends(get_current_user_id),
 ):
     """Analyze the candidate based on job description and transcript."""
     logger.info("Analyze candidate entry point")
