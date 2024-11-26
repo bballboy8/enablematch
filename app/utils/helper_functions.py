@@ -3,7 +3,10 @@ from openai import OpenAI
 from config import constants
 from logging_module import logger
 import pdfplumber
-from services.salesforce_service import get_salesforce_user_first_document, get_salesforce_user_notes
+from services.salesforce_service import (
+    get_salesforce_user_first_document,
+    get_salesforce_user_notes,
+)
 from io import BytesIO
 
 client = OpenAI(
@@ -32,9 +35,7 @@ def parse_transcript(transcript_json):
             speaker_id = section.get("speakerId", "Unknown Speaker")
             sentences = section.get("sentences", [])
             for sentence in sentences:
-                conversation_transcript += (
-                    f"{speaker_id}: {sentence.get('text', '')}\n"
-                )
+                conversation_transcript += f"{speaker_id}: {sentence.get('text', '')}\n"
         return {"transcript": conversation_transcript.strip(), "status_code": 200}
     except Exception as e:
         return {
@@ -43,9 +44,11 @@ def parse_transcript(transcript_json):
         }
 
 
-def create_prompt(job_description, conversation_transcript=None, resume_text=None, notes=None):
+def create_prompt(
+    job_description, conversation_transcript=None, resume_text=None, notes=None
+):
     """Create a detailed GPT prompt using the job description, conversation transcript, and resume text."""
-    
+
     prompt = f"""
             Here is a Job Description. Summarize the conversation and assess if the candidate is suitable for the role. 
             Provide your decision and the reasons. You need to put more weight on Resume Text, Notes and then Conversation Transcript to make a decision.
@@ -53,7 +56,7 @@ def create_prompt(job_description, conversation_transcript=None, resume_text=Non
             Job Description:
             {job_description}
             """
-    
+
     if resume_text:
         prompt += f"\n\nResume Text:\n{resume_text}"
 
@@ -77,6 +80,12 @@ def get_system_prompt():
         6. Assign higher weight to specific, quantifiable achievements and demonstrated expertise over generic skills or buzzwords.
         7. Generate a concise summary of the conversation, highlighting key points about the candidate's skills, experiences, and communication abilities.
         8. Provide a clear decision (Suitable, Not Suitable, or Requires Further Evaluation) and explain the reasons for your decision based on the conversation and role requirements.
+
+        Also you need to look for following points:
+        1. Do the candidates refer to metrics?
+        2. Are they concise or long winded?
+        3. Do they minimize filler words?
+        4. Do they talk like an executive?
         
         Focus on evaluating the candidate's alignment with the job description, their overall suitability for the role, and the authenticity of their claims. 
         
@@ -85,6 +94,7 @@ def get_system_prompt():
         - score: The score assigned to the candidate based on the evaluation out of 10.
         - decision: The final decision (Suitable, Not Suitable, Requires Further Evaluation).
         - reasons: The detailed reasons supporting your decision, including specific examples from the resume or conversation transcript.
+        - If someone doesn't get 10 out of 10 mention some comments on why they weren't a 10
     """
 
 
@@ -114,6 +124,7 @@ def get_gpt_response(prompt, system_prompt):
             "response": f"An error occurred while processing the request: {e}",
             "status_code": 500,
         }
+
 
 def test_gpt():
     """Test the GPT API by sending a sample prompt."""
@@ -171,21 +182,22 @@ async def get_content_of_pdf_from_salesforce_user(salesforce_user_id):
             "status_code": 500,
         }
 
+
 async def get_salesforce_user_notes_first_record(salesforce_user_id):
     try:
         response = await get_salesforce_user_notes(salesforce_user_id)
 
         if response.get("status_code") != 200:
             return response
-        
-        notes = response['response']
+
+        notes = response["response"]
 
         if len(notes) == 0:
             return {
                 "error": "No notes found for the user.",
                 "status_code": 404,
             }
-        
+
         note_body = notes[0].get("Content", "")
         note_title = notes[0].get("Title", "")
         note_string = f"Note Title: {note_title}\nNote Body: {note_body}"
@@ -198,13 +210,17 @@ async def get_salesforce_user_notes_first_record(salesforce_user_id):
             "error": "An error occurred while fetching file content.",
             "status_code": 500,
         }
-    
+
+
 async def summarize_conversation(conversation_transcript):
     try:
         response = client.chat.completions.create(
             model="gpt-4o",
             messages=[
-                {"role": "system", "content": "You are an expert summarizer. You are going to extract the Strength, Weakness, Overall how is the conversation for job role and summarize the conversation."},
+                {
+                    "role": "system",
+                    "content": "You are an expert summarizer. You are going to extract the Strength, Weakness, Overall how is the conversation for job role and summarize the conversation. You are going to be a bit more critical in your analysis. Also you need to look for following points 1. Do the candidates refer to metrics? 2. Are they concise or long winded? 3. Do they minimize filler words? 4. Do they talk like an executive?",
+                },
                 {"role": "user", "content": conversation_transcript},
             ],
         )
