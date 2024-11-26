@@ -53,7 +53,7 @@ async def get_call_transcript_by_call_id(call_id):
         endpoint = f"{constants.GONG_BASE_URL}/v2/calls/transcript"
         api_token = await get_api_token()
         headers = {"Authorization": api_token, "Content-Type": "application/json"}
-        payload = json.dumps({"filter": {"callIds": [call_id]}})
+        payload = json.dumps({"filter": {"callIds": call_id}})
         response = requests.post( endpoint, headers=headers, data=payload)
         if response.status_code == 200:
             return {"response": response.json(), "status_code": 200}
