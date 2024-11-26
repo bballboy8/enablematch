@@ -41,3 +41,12 @@ async def get_call_transcript_by_call_id(
     response = await gong_service.get_call_transcript_by_call_id(call_id)
     logger.info("Get Call Transcript by Call ID exit point")
     return JSONResponse(content=response, status_code=response["status_code"])
+
+@router.get("/get-gong-extensive-call-data")
+async def get_gong_extensive_call_data(
+):
+    """Get extensive call data from Gong."""
+    logger.info("Get Gong Extensive Call Data entry point")
+    response = await gong_service.gong_data_loader()
+    logger.info("Get Gong Extensive Call Data exit point")
+    return JSONResponse(content=response, status_code=response["status_code"])

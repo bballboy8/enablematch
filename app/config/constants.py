@@ -8,6 +8,7 @@ DEFAULT_TOKEN_EXPIRY_HOURS = 3600
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/token")
 
 USERS_COLLECTION = "users"
+CALL_DETAILS_COLLECTION = "call_details"
 
 # keys
 USER_ID_FIELD = "user_id"

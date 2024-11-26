@@ -63,3 +63,31 @@ async def get_call_transcript_by_call_id(call_id):
     except Exception as e:
         print(f"Error: {e}")
         return {"error": str(e), "status_code": 500}
+
+
+async def get_gong_extensive_call_data(cursor: Optional[str] = None):
+    try:
+        endpoint = f"{constants.GONG_BASE_URL}/v2/calls/extensive"
+        api_token = await get_api_token()
+        headers = {"Authorization": api_token, "Content-Type": "application/json"}
+
+        payload = {
+            "contentSelector": {"exposedFields": {"parties": True}},
+            "filter": {},
+        }
+        if cursor:
+            payload["cursor"] = cursor
+
+        response = requests.post(endpoint, headers=headers, data=json.dumps(payload))
+        if response.status_code == 200:
+            return {"response": response.json(), "status_code": 200}
+        else:
+            print(f"Error: {response.status_code} - {response.text}")
+            return {
+                "error": response.text,
+                "status_code": 500,
+                "status": response.status_code,
+            }
+    except Exception as e:
+        print(f"Error: {e}")
+        return {"error": str(e), "status_code": 500}
