@@ -80,6 +80,7 @@ def get_system_prompt():
         6. Assign higher weight to specific, quantifiable achievements and demonstrated expertise over generic skills or buzzwords.
         7. Generate a concise summary of the conversation, highlighting key points about the candidate's skills, experiences, and communication abilities.
         8. Provide a clear decision (Suitable, Not Suitable, or Requires Further Evaluation) and explain the reasons for your decision based on the conversation and role requirements.
+        9 If you the candidate lacks the seniority, give them a score of 5 and mention that you are not sure about the decision.
 
         Also you need to look for following points:
         1. Do the candidates refer to metrics?
@@ -94,7 +95,7 @@ def get_system_prompt():
         - score: The score assigned to the candidate based on the evaluation out of 10.
         - decision: The final decision (Suitable, Not Suitable, Requires Further Evaluation).
         - reasons: The detailed reasons supporting your decision, including specific examples from the resume or conversation transcript.
-        - If someone doesn't get 10 out of 10 mention some comments on why they weren't a 10
+        - comment: If someone doesn't get 10 out of 10 mention some comments on why they weren't a 10
     """
 
 
