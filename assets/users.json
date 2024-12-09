@@ -1,0 +1,238 @@
+{
+    "requestId": "4octqaa8uklnj3vf5uf",
+    "records": {
+        "totalRecords": 8,
+        "currentPageSize": 8,
+        "currentPageNumber": 0
+    },
+    "users": [
+        {
+            "id": "1493018081071742074",
+            "emailAddress": "lichtmandave@yahoo.com",
+            "created": "2024-09-30T11:55:03.037-04:00",
+            "active": true,
+            "emailAliases": [],
+            "trustedEmailAddress": null,
+            "firstName": "Data",
+            "lastName": "Entry",
+            "title": null,
+            "phoneNumber": null,
+            "extension": null,
+            "personalMeetingUrls": [],
+            "settings": {
+                "webConferencesRecorded": false,
+                "preventWebConferenceRecording": false,
+                "telephonyCallsImported": false,
+                "emailsImported": false,
+                "preventEmailImport": false,
+                "nonRecordedMeetingsImported": false,
+                "gongConnectEnabled": false
+            },
+            "managerId": null,
+            "meetingConsentPageUrl": null,
+            "spokenLanguages": []
+        },
+        {
+            "id": "2484599359653921980",
+            "emailAddress": "charlie@datatech.vip",
+            "created": "2024-11-12T14:53:01.863-05:00",
+            "active": true,
+            "emailAliases": [],
+            "trustedEmailAddress": null,
+            "firstName": "Charlie",
+            "lastName": "Mitchell",
+            "title": "Consultant",
+            "phoneNumber": null,
+            "extension": null,
+            "personalMeetingUrls": [],
+            "settings": {
+                "webConferencesRecorded": false,
+                "preventWebConferenceRecording": false,
+                "telephonyCallsImported": false,
+                "emailsImported": false,
+                "preventEmailImport": false,
+                "nonRecordedMeetingsImported": false,
+                "gongConnectEnabled": false
+            },
+            "managerId": null,
+            "meetingConsentPageUrl": null,
+            "spokenLanguages": []
+        },
+        {
+            "id": "3531239404391255470",
+            "emailAddress": "jess@enablematch.com",
+            "created": "2022-11-14T19:21:05.246-05:00",
+            "active": true,
+            "emailAliases": [],
+            "trustedEmailAddress": null,
+            "firstName": "Jess",
+            "lastName": "Marr",
+            "title": "Talent Advisor",
+            "phoneNumber": null,
+            "extension": null,
+            "personalMeetingUrls": [],
+            "settings": {
+                "webConferencesRecorded": true,
+                "preventWebConferenceRecording": false,
+                "telephonyCallsImported": true,
+                "emailsImported": false,
+                "preventEmailImport": false,
+                "nonRecordedMeetingsImported": true,
+                "gongConnectEnabled": false
+            },
+            "managerId": "8021304429166254783",
+            "meetingConsentPageUrl": null,
+            "spokenLanguages": [
+                {
+                    "language": "en-US",
+                    "primary": true
+                }
+            ]
+        },
+        {
+            "id": "4618528827847341746",
+            "emailAddress": "debbie@enablematch.com",
+            "created": "2022-11-14T19:20:05.431-05:00",
+            "active": true,
+            "emailAliases": [],
+            "trustedEmailAddress": null,
+            "firstName": "Debbie",
+            "lastName": "Enander",
+            "title": "Talent Advisor",
+            "phoneNumber": null,
+            "extension": null,
+            "personalMeetingUrls": [],
+            "settings": {
+                "webConferencesRecorded": true,
+                "preventWebConferenceRecording": false,
+                "telephonyCallsImported": true,
+                "emailsImported": false,
+                "preventEmailImport": false,
+                "nonRecordedMeetingsImported": true,
+                "gongConnectEnabled": false
+            },
+            "managerId": "8021304429166254783",
+            "meetingConsentPageUrl": null,
+            "spokenLanguages": [
+                {
+                    "language": "en-US",
+                    "primary": true
+                }
+            ]
+        },
+        {
+            "id": "6620109226457165031",
+            "emailAddress": "jessellis@enablematch.com",
+            "created": "2022-11-14T19:22:22.318-05:00",
+            "active": true,
+            "emailAliases": [],
+            "trustedEmailAddress": null,
+            "firstName": "Jess",
+            "lastName": "Ellis",
+            "title": "Talent Advisor",
+            "phoneNumber": null,
+            "extension": null,
+            "personalMeetingUrls": [],
+            "settings": {
+                "webConferencesRecorded": true,
+                "preventWebConferenceRecording": false,
+                "telephonyCallsImported": true,
+                "emailsImported": true,
+                "preventEmailImport": false,
+                "nonRecordedMeetingsImported": true,
+                "gongConnectEnabled": true
+            },
+            "managerId": "8021304429166254783",
+            "meetingConsentPageUrl": null,
+            "spokenLanguages": [
+                {
+                    "language": "en-US",
+                    "primary": true
+                }
+            ]
+        },
+        {
+            "id": "7519969093944433063",
+            "emailAddress": "integration.user.chorus+enablematch@gmail.com",
+            "created": "2022-11-22T13:51:02.340-05:00",
+            "active": false,
+            "emailAliases": [],
+            "trustedEmailAddress": null,
+            "firstName": "Integration User",
+            "lastName": "for Migration",
+            "title": null,
+            "phoneNumber": null,
+            "extension": null,
+            "personalMeetingUrls": [],
+            "settings": {
+                "webConferencesRecorded": false,
+                "preventWebConferenceRecording": false,
+                "telephonyCallsImported": false,
+                "emailsImported": false,
+                "preventEmailImport": false,
+                "nonRecordedMeetingsImported": false,
+                "gongConnectEnabled": false
+            },
+            "managerId": null,
+            "meetingConsentPageUrl": null,
+            "spokenLanguages": []
+        },
+        {
+            "id": "8021304429166254783",
+            "emailAddress": "dave@enablematch.com",
+            "created": "2022-11-14T19:04:10.349-05:00",
+            "active": true,
+            "emailAliases": [],
+            "trustedEmailAddress": null,
+            "firstName": "Dave",
+            "lastName": "Lichtman",
+            "title": "CEO",
+            "phoneNumber": null,
+            "extension": null,
+            "personalMeetingUrls": [],
+            "settings": {
+                "webConferencesRecorded": true,
+                "preventWebConferenceRecording": false,
+                "telephonyCallsImported": true,
+                "emailsImported": true,
+                "preventEmailImport": false,
+                "nonRecordedMeetingsImported": true,
+                "gongConnectEnabled": true
+            },
+            "managerId": null,
+            "meetingConsentPageUrl": null,
+            "spokenLanguages": []
+        },
+        {
+            "id": "9180167231070737969",
+            "emailAddress": "ben@enablematch.com",
+            "created": "2022-11-14T19:18:36.836-05:00",
+            "active": true,
+            "emailAliases": [],
+            "trustedEmailAddress": null,
+            "firstName": "Ben",
+            "lastName": "Harris",
+            "title": "Talent Advisor",
+            "phoneNumber": null,
+            "extension": null,
+            "personalMeetingUrls": [],
+            "settings": {
+                "webConferencesRecorded": true,
+                "preventWebConferenceRecording": false,
+                "telephonyCallsImported": true,
+                "emailsImported": false,
+                "preventEmailImport": false,
+                "nonRecordedMeetingsImported": true,
+                "gongConnectEnabled": true
+            },
+            "managerId": "8021304429166254783",
+            "meetingConsentPageUrl": null,
+            "spokenLanguages": [
+                {
+                    "language": "en-US",
+                    "primary": true
+                }
+            ]
+        }
+    ]
+}
