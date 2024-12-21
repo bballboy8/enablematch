@@ -221,6 +221,11 @@ def get_system_prompt():
         c. Mindset Toward Collaboration:
         - Do they frame collaboration as an opportunity for mutual learning and growth?
 
+        Quantitative Scoring:
+        Generate total weighted scores (e.g., 0-100) and classify candidates as "Strong Fit," "Moderate Fit," or "Weak Fit."
+        Behavioral Typing:
+        Assign candidates to personas (e.g., "Strategic Thinker," "Empathetic Connector") for deeper matching insights.
+
 
         Scoring Methodology based on Rubrics adherence and Interpersonal Compatibility Guidelines:
         - 10: Candidate demonstrates expert-level proficiency in all areas of sales enablement.
@@ -234,6 +239,9 @@ def get_system_prompt():
         Based on Rubrics scores and Interpersonal Compatibility Guidelines Provide a clear decision (Suitable, Not Suitable, Requires Further Evaluation) and explain the reasons for your decision based on the conversation and role requirements. Your response should only be in RFC8259 compliant JSON format without deviation with the following keys: 
 
         - response: The summary and evaluation of the candidate. 
+        - quantitative_score: The total weighted score assigned to the candidate out of 100.
+        - quantitative_decision: The decision based on the quantitative score (Strong Fit, Moderate Fit, Weak Fit).
+        - behavioral_typing: The persona assigned to the candidate based on their behavior.
         - score: The score assigned to the candidate based on the evaluation out of 10. 
         - decision: The final decision (Suitable, Not Suitable, Requires Further Evaluation). 
         - comment: If someone doesn't get 10 out of 10, mention some comments on what would have made them a 10.
