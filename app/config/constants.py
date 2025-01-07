@@ -9,6 +9,7 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/token")
 
 USERS_COLLECTION = "users"
 CALL_DETAILS_COLLECTION = "call_details"
+USERS_PROFILE_COLLECTION = "user_profile"
 
 # keys
 USER_ID_FIELD = "user_id"
@@ -25,3 +26,4 @@ SALESFORCE_USERNAME = os.getenv("SALESFORCE_USERNAME")
 SALESFORCE_PASSWORD = os.getenv("SALESFORCE_PASSWORD")
 SALESFORCE_SECURITY_TOKEN = os.getenv("SALESFORCE_SECURITY_TOKEN")
 SALESFORCE_DOMAIN = os.getenv("SALESFORCE_DOMAIN")
+PROXY_CURL_API_KEY = os.getenv("PROXY_CURL_API_KEY")
