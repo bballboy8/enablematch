@@ -2,18 +2,30 @@ from utils import helper_functions
 from logging_module import logger
 from utils.thirdparty import gong_api_service
 import json
+from services import proxy_curl_service
 
 
-async def analyze_candidate(job_description, call_id, salesforce_user_id):
+async def analyze_candidate(job_description, call_id, salesforce_user_id, linkedin_profile_url=None):
     """Analyze the candidate based on job description and transcript."""
     try:
         # Salesforce Resume
-        logger.info(f"Fetching resume content for candidate with salesforce_user_id {salesforce_user_id}")
-        resume_response = await helper_functions.get_content_of_pdf_from_salesforce_user(salesforce_user_id)
-        if resume_response.get("status_code") != 200:
-            return resume_response       
-        input_resume = resume_response["file_content"]
-        logger.info(f"Resume content fetched successfully for candidate with salesforce_user_id {salesforce_user_id}")
+
+        # LinkedIn Profile
+        if linkedin_profile_url:
+            logger.info(f"Fetching resume content for candidate with linkedin_profile_url {linkedin_profile_url}")
+            resume_response = await proxy_curl_service.get_linkedin_person(linkedin_profile_url)
+            if resume_response.get("status_code") != 200:
+                return resume_response
+            input_resume = await proxy_curl_service.get_key_value_concatenation(resume_response["data"])
+            logger.info(f"Resume content fetched successfully for candidate with linkedin_profile_url {linkedin_profile_url}")
+
+        else:
+            logger.info(f"Fetching resume content for candidate with salesforce_user_id {salesforce_user_id}")
+            resume_response = await helper_functions.get_content_of_pdf_from_salesforce_user(salesforce_user_id)
+            if resume_response.get("status_code") != 200:
+                return resume_response       
+            input_resume = resume_response["file_content"]
+            logger.info(f"Resume content fetched successfully for candidate with salesforce_user_id {salesforce_user_id}")
 
 
         # Salesforce Notes
