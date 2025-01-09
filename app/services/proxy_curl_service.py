@@ -43,7 +43,7 @@ async def get_key_value_concatenation(data):
         "accomplishment_organisations", "accomplishment_publications",
         "accomplishment_honors_awards", "accomplishment_patents",
         "accomplishment_courses", "accomplishment_projects",
-        "accomplishment_test_scores", "volunteer_work"
+        "accomplishment_test_scores", "volunteer_work", "recommendations", "skills",
     ]
     
     # Collect "key: value" pairs for the keys that exist in the dictionary
