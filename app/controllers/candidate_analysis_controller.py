@@ -26,11 +26,12 @@ async def analyze_candidate(
     request: CandidateAnalysisRequestBody,
     salesforce_user_id: str,
     call_id: Optional[list[str]] = None,
+    linkedin_profile_url: Optional[str] = None,
 ):
     """Analyze the candidate based on job description and transcript."""
     logger.info("Analyze candidate entry point")
     response = await candidate_analysis_service.analyze_candidate(
-        request.job_description, call_id, salesforce_user_id
+        request.job_description, call_id, salesforce_user_id, linkedin_profile_url
     )
     logger.info("Analyze candidate exit point")
     return JSONResponse(
