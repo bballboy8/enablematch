@@ -17,6 +17,7 @@ async def analyze_candidate(job_description, call_id, salesforce_user_id, linked
             if resume_response.get("status_code") != 200:
                 return resume_response
             input_resume = await proxy_curl_service.get_key_value_concatenation(resume_response["data"])
+            input_resume = f"Source: LinkedIn\n{input_resume}"
             logger.info(f"Resume content fetched successfully for candidate with linkedin_profile_url {linkedin_profile_url}")
 
         else:
@@ -25,6 +26,7 @@ async def analyze_candidate(job_description, call_id, salesforce_user_id, linked
             if resume_response.get("status_code") != 200:
                 return resume_response       
             input_resume = resume_response["file_content"]
+            input_resume = f"Source: Resume\n{input_resume}"
             logger.info(f"Resume content fetched successfully for candidate with salesforce_user_id {salesforce_user_id}")
 
 
