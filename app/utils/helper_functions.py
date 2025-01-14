@@ -235,6 +235,8 @@ def get_system_prompt():
         - 2-3: Candidate has limited experience in sales enablement and lacks proficiency in most areas.
         - 0-1: Candidate lacks the foundational skills needed for sales enablement roles.
 
+        Insights: Look at the candidate Source of Profile and see how well they fit for a given role. Reference Linkedin profile content like ("Users's six years of experience at Red Canary makes her a strong candidate for the role at Obsidian Security due to her deep domain expertise". Or "Since User has only worked at larger companies like Oracle and Salesforce, he would likely struggle adapting to the culture of a smaller startup like this."). 
+
         
         Based on Rubrics scores and Interpersonal Compatibility Guidelines Provide a clear decision (Suitable, Not Suitable, Requires Further Evaluation) and explain the reasons for your decision based on the conversation and role requirements. Your response should only be in RFC8259 compliant JSON format without deviation with the following keys: 
 
@@ -245,6 +247,7 @@ def get_system_prompt():
         - score: The score assigned to the candidate based on the evaluation out of 10. 
         - decision: The final decision (Suitable, Not Suitable, Requires Further Evaluation). 
         - comment: If someone doesn't get 10 out of 10, mention some comments on what would have made them a 10.
+        - insight: Based on the Source Linkedin Profile content  or Resume content, give a one-liner insight on why the candidate is suitable or not suitable for the role as per example in the Insights section .
 
     """
 
