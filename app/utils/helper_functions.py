@@ -45,7 +45,7 @@ def parse_transcript(transcript_json):
 
 
 def create_prompt(
-    job_description, conversation_transcript=None, resume_text=None, notes=None
+    job_description, conversation_transcript=None, resume_text=None, notes=None, source="Resume"
 ):
     """Create a detailed GPT prompt using the job description, conversation transcript, and resume text."""
 
@@ -57,7 +57,7 @@ def create_prompt(
             """
 
     if resume_text:
-        prompt += f"\n\nResume Text:\n{resume_text}"
+        prompt += f"\n\n{source} Content:\n{resume_text}"
 
     if conversation_transcript:
         prompt += f"\n\nConversation Transcript:\n{conversation_transcript}"
@@ -235,12 +235,12 @@ def get_system_prompt():
         - 2-3: Candidate has limited experience in sales enablement and lacks proficiency in most areas.
         - 0-1: Candidate lacks the foundational skills needed for sales enablement roles.
 
-        Insights: Look at the candidate Source of Profile and see how well they fit for a given role. Reference Linkedin profile content like ("Users's six years of experience at Red Canary makes her a strong candidate for the role at Obsidian Security due to her deep domain expertise". Or "Since User has only worked at larger companies like Oracle and Salesforce, he would likely struggle adapting to the culture of a smaller startup like this."). 
+        Insights: Look at the candidate Source of Profile and see how well they fit for a given role. Reference Linkedin profile content like ("Users's six years of experience at Red Canary makes her a strong candidate for the role at Obsidian Security due to her deep domain expertise". Or "Since User has only worked at larger companies like Oracle and Salesforce, he would likely struggle adapting to the culture of a smaller startup like this.").  Also you need to be specific about the points and the source like if its Linkedin or their Resume it should be mentioned in the insights and the conversation summary.
 
         
         Based on Rubrics scores and Interpersonal Compatibility Guidelines Provide a clear decision (Suitable, Not Suitable, Requires Further Evaluation) and explain the reasons for your decision based on the conversation and role requirements. Your response should only be in RFC8259 compliant JSON format without deviation with the following keys: 
 
-        - response: The summary and evaluation of the candidate. 
+        - response: The key summary with specifics and evaluation of the candidate. 
         - quantitative_score: The total weighted score assigned to the candidate out of 100.
         - quantitative_decision: The decision based on the quantitative score (Strong Fit, Moderate Fit, Weak Fit).
         - behavioral_typing: The persona assigned to the candidate based on their behavior.
@@ -366,14 +366,15 @@ async def get_salesforce_user_notes_first_record(salesforce_user_id):
         }
 
 
-async def summarize_conversation(conversation_transcript):
+async def summarize_conversation(conversation_transcript, input_resume):
     try:
+        conversation_transcript = "Here is the Users background and experience: " + input_resume + "and here is the conversation transcript: " + conversation_transcript
         response = client.chat.completions.create(
             model="gpt-4o",
             messages=[
                 {
                     "role": "system",
-                    "content": "You are an expert summarizer. You are going to extract the Strength, Weakness, Overall how is the conversation for job role and summarize the conversation. You are going to be a bit more critical in your analysis. Also you need to look for following points 1. Do the candidates refer to metrics? 2. Are they concise or long winded? 3. Do they minimize filler words? 4. Do they talk like an executive?",
+                    "content": "You are an expert summarizer. You are going to extract the Strength, Weakness, Overall how is the conversation for job role and summarize the conversation. You are going to be a bit more critical in your analysis. Also you need to look for following points 1. Do the candidates refer to metrics? 2. Are they concise or long winded? 3. Do they minimize filler words? 4. Do they talk like an executive? Be sure to mention the key points of the conversation. 5.You always need to be specific about the points specific like if a candidate is talking about a project, you need to mention the project name, the role of the candidate in the project, the outcome of the project, and the impact of the project. You need to be very specific about the points. You need to check if a candidate has resume of linkedin profile and mention the points from there. 6. You need to mention the source of the content like if its from Linkedin or Resume.",
                 },
                 {"role": "user", "content": conversation_transcript},
             ],

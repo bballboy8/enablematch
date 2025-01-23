@@ -9,7 +9,7 @@ async def analyze_candidate(job_description, call_id, salesforce_user_id, linked
     """Analyze the candidate based on job description and transcript."""
     try:
         # Salesforce Resume
-
+        source = 'LinkedIn' if linkedin_profile_url else 'Resume'
         # LinkedIn Profile
         if linkedin_profile_url:
             logger.info(f"Fetching resume content for candidate with linkedin_profile_url {linkedin_profile_url}")
@@ -18,7 +18,7 @@ async def analyze_candidate(job_description, call_id, salesforce_user_id, linked
                 return resume_response
             input_resume = await proxy_curl_service.get_key_value_concatenation(resume_response["data"])
             input_resume = f"Source: LinkedIn\n{input_resume}"
-            logger.info(f"Resume content fetched successfully for candidate with linkedin_profile_url {linkedin_profile_url}")
+            logger.info(f"Linkedin content fetched successfully for candidate with linkedin_profile_url {linkedin_profile_url}")
 
         else:
             logger.info(f"Fetching resume content for candidate with salesforce_user_id {salesforce_user_id}")
@@ -54,7 +54,7 @@ async def analyze_candidate(job_description, call_id, salesforce_user_id, linked
                 if formatted_transcript_response.get("status_code") == 500:
                     continue
                 # Summnarize the transcript
-                summarized_conversation_response = await helper_functions.summarize_conversation(formatted_transcript_response["transcript"])
+                summarized_conversation_response = await helper_functions.summarize_conversation(formatted_transcript_response["transcript"], input_resume)
                 if summarized_conversation_response.get("status_code") == 500:
                     continue
 
@@ -65,7 +65,7 @@ async def analyze_candidate(job_description, call_id, salesforce_user_id, linked
         else:
             input_transcript = ""
 
-        prompt = helper_functions.create_prompt(job_description, input_transcript, input_resume, notes)
+        prompt = helper_functions.create_prompt(job_description, input_transcript, input_resume, notes, source ) 
         system_prompt = helper_functions.get_system_prompt()
         response = helper_functions.get_gpt_response(prompt, system_prompt)
         if response.get("status_code") == 500:
