@@ -19,3 +19,25 @@ async def get_pinecone_indexes_service():
     except Exception as e:
         logger.error(f"Failed to get Pinecone indexes: {e}")
         return {"status_code": 500, "response": str(e)}
+    
+
+async def create_pinecone_index_service(index_name: str):
+    """
+    Create a new Pinecone index asynchronously.
+
+    Args:
+        index_name (str): The name of the new index to be created.
+
+    Returns:
+        dict: A dictionary containing the status code and the response.
+        Keys:
+            - status_code (int): HTTP-like status code (200 for success, 500 for error).
+            - response (str): A message indicating the status of the index creation.
+    """
+    try:
+        pinecone_client = PineConeDBService()
+        response = await pinecone_client.create_index(index_name)
+        return response
+    except Exception as e:
+        logger.error(f"Failed to create Pinecone index: {e}")
+        return {"status_code": 500, "response": str(e)}
