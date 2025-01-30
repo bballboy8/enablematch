@@ -7,7 +7,8 @@ from routers import (
     candidate_analysis_router,
     gong_router,
     salesforce_router,
-    proxy_curl_router
+    proxy_curl_router,
+    pinecone_router,
 )
 
 
@@ -53,3 +54,4 @@ project.include_router(candidate_analysis_router.router, prefix="/api", tags=["C
 project.include_router(gong_router.router, prefix="/api", tags=["Gong"])
 project.include_router(salesforce_router.router, prefix="/api", tags=["Salesforce"])
 project.include_router(proxy_curl_router.router, prefix="/api", tags=["Proxy Curl"])
+project.include_router(pinecone_router.router, prefix="/api", tags=["Pinecone"])
