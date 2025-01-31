@@ -3,6 +3,7 @@ from typing import Optional
 from pydantic import BaseModel, Field, field_validator, model_validator
 from dateutil import parser
 from pytz import UTC
+from typing import Any
 
 class CallDetailModel(BaseModel):
     gong_id: str
@@ -25,6 +26,8 @@ class CallDetailModel(BaseModel):
     meetingUrl: str
     isPrivate: bool
     calendarEventId: Optional[str]
+    party_one: Optional[Any]
+    party_two: Optional[Any]
 
     @field_validator("scheduled", "started", mode="before")
     def convert_to_utc(cls, value):

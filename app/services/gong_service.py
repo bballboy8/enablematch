@@ -92,7 +92,16 @@ async def save_gong_record_in_db(records):
     """Save Gong records in database."""
     try:
         call_details_collection = db[constants.CALL_DETAILS_COLLECTION]
-        all_records = [CallDetailModel(**record["metaData"]) for record in records]
+        all_records = []
+        for record in records:
+            if len(record.get("parties", [])) == 2:
+                all_records.append(CallDetailModel(**record["metaData"], party_one=record.get("parties")[0], party_two=record.get("parties")[1]))
+            else:
+                if len(record.get("parties", [])) == 1:
+                    all_records.append(CallDetailModel(**record["metaData"], party_one=record.get("parties")[0], party_two={}))
+                else:
+                    all_records.append(CallDetailModel(**record["metaData"], party_one={}, party_two={}))
+
         call_details_collection.insert_many([record.model_dump() for record in all_records])
         return {"response": "Records saved successfully", "status_code": 200}
     except Exception as e:
