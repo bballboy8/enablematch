@@ -11,7 +11,7 @@ class SalesforceApiService:
             username=constants.SALESFORCE_USERNAME,
             password=constants.SALESFORCE_PASSWORD,
             security_token=constants.SALESFORCE_SECURITY_TOKEN,
-            domain=constants.SALESFORCE_DOMAIN,
+            # domain=constants.SALESFORCE_DOMAIN,
         )
 
     def get_salesforce_data(self, query):
@@ -244,3 +244,15 @@ class SalesforceApiService:
         except Exception as e:
             logger.error(f"Error fetching notes from Salesforce: {e}")
             return {"message": f"An error occurred while fetching notes from Salesforce: {e}", "status_code": 500}
+        
+    def get_salesforce_users(self):
+        """
+        Get all users from Salesforce.
+        """
+        try:
+            query = "SELECT Id, Name, Email FROM User"
+            users = self.sf.query_all(query)["records"]
+            return {"users": users, "status_code": 200}
+        except Exception as e:
+            logger.error(f"Error fetching users from Salesforce: {e}")
+            return {"message": f"An error occurred while fetching users from Salesforce: {e}", "status_code": 500}

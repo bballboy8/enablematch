@@ -163,3 +163,16 @@ async def get_salesforce_user_notes(linked_entity_id):
             "response": f"An error occurred while fetching notes from Salesforce: {e}",
             "status_code": 500,
         }
+
+async def get_salesforce_users():
+    """Get users from Salesforce."""
+    try:
+        salesforce_instance = SalesforceApiService()
+        users = salesforce_instance.get_salesforce_users()
+        return {"response": users, "status_code": 200}
+    except Exception as e:
+        logger.error(f"Error while fetching Salesforce users: {e}")
+        return {
+            "response": f"An error occurred while fetching the Salesforce users: {e}",
+            "status_code": 500,
+        }

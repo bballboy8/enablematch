@@ -133,3 +133,17 @@ async def get_salesforce_user_notes(salesforce_user_id: str, user_id: str = Depe
     response = await salesforce_service.get_salesforce_user_notes(salesforce_user_id)
     logger.info("Get Salesforce User Notes exit point")
     return JSONResponse(content=response, status_code=response["status_code"])
+
+
+@router.get("/get-salesforce-users")
+async def get_salesforce_users(user_id: str = Depends(get_current_user_id)):
+    """
+    Endpoint to get users from Salesforce.
+    
+    Returns:
+    - List of users from Salesforce.
+    """
+    logger.info("Get Salesforce Users entry point")
+    response = await salesforce_service.get_salesforce_users()
+    logger.info("Get Salesforce Users exit point")
+    return JSONResponse(content=response, status_code=response["status_code"])

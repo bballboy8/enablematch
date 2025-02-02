@@ -9,10 +9,9 @@ import requests
 import services
 from mimetypes import guess_type
 from os.path import isfile
-import asyncio
 
 
-def get_current_user_id(token: str = Depends(oauth2_scheme)):
+async def get_current_user_id(token: str = Depends(oauth2_scheme)):
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Could not validate credentials",
@@ -27,10 +26,13 @@ def get_current_user_id(token: str = Depends(oauth2_scheme)):
             algorithms=["HS256"],
         )
         user_id = heisman_token_data.get("_id") or heisman_token_data.get("id")
-        user = users_collection.find_one({"_id": ObjectId(user_id), "is_active": True})
+        logger.debug(f"User ID: {user_id}")
+        user = await users_collection.find_one({"_id": ObjectId(user_id), "is_active": True})
         if not user:
             raise credentials_exception
         return user_id
     except Exception as e:
+        import traceback
+        traceback.print_exc()
         logger.error(f"Error in get current user id: {e}")
         raise credentials_exception
