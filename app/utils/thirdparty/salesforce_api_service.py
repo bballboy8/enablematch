@@ -250,7 +250,7 @@ class SalesforceApiService:
         Get all users from Salesforce.
         """
         try:
-            query = "SELECT Id, Name, Email FROM User"
+            query = "SELECT Id, Name FROM Candidates__c"
             users = self.sf.query_all(query)["records"]
             return {"users": users, "status_code": 200}
         except Exception as e:
