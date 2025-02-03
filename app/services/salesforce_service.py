@@ -1,6 +1,7 @@
 from utils.thirdparty.salesforce_api_service import SalesforceApiService
 from logging_module import logger
-
+from config.db_connection import db
+from config import constants
 
 async def get_salesforce_data(query):
     """Get data from Salesforce."""
@@ -165,14 +166,67 @@ async def get_salesforce_user_notes(linked_entity_id):
         }
 
 async def get_salesforce_users():
-    """Get users from Salesforce."""
+    """Get users from Salesforce and insert only new users."""
     try:
+        salesforce_users_collection = db[constants.SALESFORCE_USERS_COLLECTION]
         salesforce_instance = SalesforceApiService()
+        
         users = salesforce_instance.get_salesforce_users()
-        return {"response": users, "status_code": 200}
+        users = users['users']
+
+        # Extract Salesforce user IDs from the fetched users
+        fetched_user_ids = {user['Id'] for user in users}
+        
+        # Find existing user IDs in the database
+        existing_users = await salesforce_users_collection.find(
+            {"Id": {"$in": list(fetched_user_ids)}},
+            {"Id": 1}
+        ).to_list(length=None)
+        existing_user_ids = {user['Id'] for user in existing_users}
+        
+        # Filter out users that already exist in the database
+        new_users = [
+            user
+            for user in users if user['Id'] not in existing_user_ids
+        ]
+        
+        # Insert only new users
+        if new_users:
+            await salesforce_users_collection.insert_many(new_users)
+        
+        return {"response": "Synced succesfully", "status_code": 200}
     except Exception as e:
+        import traceback
+        traceback.print_exc()
         logger.error(f"Error while fetching Salesforce users: {e}")
         return {
             "response": f"An error occurred while fetching the Salesforce users: {e}",
+            "status_code": 500,
+        }
+    
+async def fetch_gong_records_by_salesforce_user_id(salesforce_user_id:str):
+    """Fetch Gong records by Salesforce user ID."""
+    try:
+        salesforce_instance = SalesforceApiService()
+        gong_records = salesforce_instance.fetch_gong_records_by_salesforce_user_id(salesforce_user_id)
+        return {"response": gong_records, "status_code": 200}
+    except Exception as e:
+        logger.error(f"Error while fetching Gong records by Salesforce user ID: {e}")
+        return {
+            "response": f"An error occurred while fetching Gong records by Salesforce user ID: {e}",
+            "status_code": 500,
+        }
+    
+
+async def get_each_table_count():
+    """Get count of each table."""
+    try:
+        salesforce_instance = SalesforceApiService()
+        count = salesforce_instance.get_each_table_count()
+        return {"response": count, "status_code": 200}
+    except Exception as e:
+        logger.error(f"Error while fetching count of each table: {e}")
+        return {
+            "response": f"An error occurred while fetching count of each table: {e}",
             "status_code": 500,
         }

@@ -147,3 +147,30 @@ async def get_salesforce_users(user_id: str = Depends(get_current_user_id)):
     response = await salesforce_service.get_salesforce_users()
     logger.info("Get Salesforce Users exit point")
     return JSONResponse(content=response, status_code=response["status_code"])
+
+
+@router.get("/fetch-gong-conversation-ids")
+async def fetch_gong_conversation_ids(salesforce_user_id:str, user_id: str = Depends(get_current_user_id)):
+    """
+    Endpoint to fetch conversation IDs from Gong.
+    
+    Returns:
+    - List of conversation IDs.
+    """
+    logger.info("Fetch Gong Conversation IDs entry point")
+    response = await salesforce_service.fetch_gong_records_by_salesforce_user_id(salesforce_user_id)
+    logger.info("Fetch Gong Conversation IDs exit point")
+    return JSONResponse(content=response, status_code=response["status_code"])
+
+@router.get("/get-each-table-count")
+async def get_each_table_count(user_id: str = Depends(get_current_user_id)):
+    """
+    Endpoint to get the count of each table in Salesforce.
+    
+    Returns:
+    - Count of each table.
+    """
+    logger.info("Get Each Table Count entry point")
+    response = await salesforce_service.get_each_table_count()
+    logger.info("Get Each Table Count exit point")
+    return JSONResponse(content=response, status_code=response["status_code"])

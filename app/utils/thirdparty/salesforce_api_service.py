@@ -250,9 +250,55 @@ class SalesforceApiService:
         Get all users from Salesforce.
         """
         try:
-            query = "SELECT Id, Name FROM Candidates__c"
-            users = self.sf.query_all(query)["records"]
-            return {"users": users, "status_code": 200}
+            query = "SELECT Id, Name, LinkedIn_Profile__c, PersonEmail, Summary_of_Candidate__c, OwnerId, Gong__Gong_Count__c FROM Account WHERE RecordType.Name = 'Candidate- Person Accounts' "
+            users = self.sf.query_all(query)
+            return {"users": users['records'], "status_code": 200}
         except Exception as e:
             logger.error(f"Error fetching users from Salesforce: {e}")
             return {"message": f"An error occurred while fetching users from Salesforce: {e}", "status_code": 500}
+        
+    def get_salesforce_user(self, user_id):
+        """
+        Get a specific user from Salesforce.
+        
+        :param user_id: Salesforce user ID.
+        """
+        try:
+            query = f"SELECT Id, Name FROM Candidates__c WHERE Id = '{user_id}'"
+            user = self.sf.query(query)["records"]
+            return {"user": user, "status_code": 200}
+        except Exception as e:
+            logger.error(f"Error fetching user from Salesforce: {e}")
+            return {"message": f"An error occurred while fetching user from Salesforce: {e}", "status_code": 500}
+        
+    def fetch_gong_records_by_salesforce_user_id(self, user_id):
+        """
+        Fetch Gong records by Salesforce user ID.
+        
+        :param user_id: Salesforce user ID.
+        """
+        try:
+            query = f"SELECT Id, Name FROM Gong_Interaction_Details__c WHERE User__c = '{user_id}'"
+            gong_records = self.sf.query_all(query)["records"]
+            return {"gong_records": gong_records, "status_code": 200}
+        except Exception as e:
+            logger.error(f"Error fetching Gong records from Salesforce: {e}")
+            return {"message": f"An error occurred while fetching Gong records from Salesforce: {e}", "status_code": 500}
+        
+    def get_each_table_count(self):
+        """
+        Get the count of each table in Salesforce.
+        """
+        try:
+            query_1 = "SELECT QualifiedApiName FROM EntityDefinition WHERE IsCustomizable = true"
+            tables = self.sf.query_all(query_1)["records"]
+            table_count = {}
+            for table in tables:
+                table_name = table["QualifiedApiName"]
+                query_2 = f"SELECT COUNT() FROM {table_name}"
+                count = self.sf.query(query_2)["totalSize"]
+                table_count[table_name] = count
+            return {"table_count": table_count, "status_code": 200}
+        except Exception as e:
+            logger.error(f"Error fetching table count from Salesforce: {e}")
+            return {"message": f"An error occurred while fetching table count from Salesforce: {e}", "status_code": 500}
