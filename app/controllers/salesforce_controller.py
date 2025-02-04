@@ -4,6 +4,7 @@ from utils.dependencies import get_current_user_id
 from services import salesforce_service
 from fastapi.responses import JSONResponse
 from typing import Optional
+from fastapi.background import BackgroundTasks
 
 router = APIRouter()
 
@@ -149,8 +150,8 @@ async def get_salesforce_users(user_id: str = Depends(get_current_user_id)):
     return JSONResponse(content=response, status_code=response["status_code"])
 
 
-@router.get("/fetch-gong-conversation-ids")
-async def fetch_gong_conversation_ids(salesforce_user_id:str, user_id: str = Depends(get_current_user_id)):
+@router.get("/fetch-gong-conversation-ids-by-email")
+async def fetch_gong_conversation_ids_by_email(email:str, user_id: str = Depends(get_current_user_id)):
     """
     Endpoint to fetch conversation IDs from Gong.
     
@@ -158,7 +159,7 @@ async def fetch_gong_conversation_ids(salesforce_user_id:str, user_id: str = Dep
     - List of conversation IDs.
     """
     logger.info("Fetch Gong Conversation IDs entry point")
-    response = await salesforce_service.fetch_gong_records_by_salesforce_user_id(salesforce_user_id)
+    response = await salesforce_service.fetch_gong_record_by_email(email)
     logger.info("Fetch Gong Conversation IDs exit point")
     return JSONResponse(content=response, status_code=response["status_code"])
 
@@ -174,3 +175,33 @@ async def get_each_table_count(user_id: str = Depends(get_current_user_id)):
     response = await salesforce_service.get_each_table_count()
     logger.info("Get Each Table Count exit point")
     return JSONResponse(content=response, status_code=response["status_code"])
+
+@router.put("/assign-gong-conversation-id-to-all-user")
+async def assign_gong_conversation_id_to_all_user(background_task: BackgroundTasks, user_id: str = Depends(get_current_user_id)):
+    """
+    Endpoint to assign a conversation ID to all users in Salesforce.
+    
+    Returns:
+    - Success message.
+    """
+    logger.info("Assign Gong Conversation ID to All Users entry point")
+    background_task.add_task(salesforce_service.assign_gong_conversaation_ids_to_the_candidates)
+    logger.info("Assign Gong Conversation ID to All Users exit point")
+    return JSONResponse(content="Recieved", status_code=200)  
+
+
+@router.get("/run-raw-salesforce-query")
+async def run_raw_saleforce_query_for_testing( background_task: BackgroundTasks, user_id: str = Depends(get_current_user_id)):
+    """
+    Endpoint to run a raw Salesforce query.
+    
+    Parameters:
+    - query: Salesforce query.
+    
+    Returns:
+    - Query response.
+    """
+    logger.info("Run Raw Salesforce Query entry point")
+    background_task.add_task(salesforce_service.run_raw_saleforce_query_for_test)
+    logger.info("Run Raw Salesforce Query exit point")
+    return JSONResponse(content="Recieved", status_code=200)  

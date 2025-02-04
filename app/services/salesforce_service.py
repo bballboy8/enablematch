@@ -2,6 +2,7 @@ from utils.thirdparty.salesforce_api_service import SalesforceApiService
 from logging_module import logger
 from config.db_connection import db
 from config import constants
+import time
 
 async def get_salesforce_data(query):
     """Get data from Salesforce."""
@@ -203,17 +204,18 @@ async def get_salesforce_users():
             "response": f"An error occurred while fetching the Salesforce users: {e}",
             "status_code": 500,
         }
+
     
-async def fetch_gong_records_by_salesforce_user_id(salesforce_user_id:str):
-    """Fetch Gong records by Salesforce user ID."""
+async def fetch_gong_record_by_email(email:str):
+    """Fetch Gong record by email."""
     try:
         salesforce_instance = SalesforceApiService()
-        gong_records = salesforce_instance.fetch_gong_records_by_salesforce_user_id(salesforce_user_id)
-        return {"response": gong_records, "status_code": 200}
+        gong_record = salesforce_instance.fetch_gong_records_by_salesforce_user_email(email)
+        return {"response": gong_record, "status_code": 200}
     except Exception as e:
-        logger.error(f"Error while fetching Gong records by Salesforce user ID: {e}")
+        logger.error(f"Error while fetching Gong record by email: {e}")
         return {
-            "response": f"An error occurred while fetching Gong records by Salesforce user ID: {e}",
+            "response": f"An error occurred while fetching Gong record by email: {e}",
             "status_code": 500,
         }
     
@@ -228,5 +230,70 @@ async def get_each_table_count():
         logger.error(f"Error while fetching count of each table: {e}")
         return {
             "response": f"An error occurred while fetching count of each table: {e}",
+            "status_code": 500,
+        }
+    
+
+async def assign_gong_conversaation_ids_to_the_candidates():
+    """Assign Gong conversation IDs to the candidates."""
+    try:
+        salesforce_users_collection = db[constants.SALESFORCE_USERS_COLLECTION]
+        salesforce_instance = SalesforceApiService()
+
+        # Fetch all Salesforce users
+        salesforce_users = await salesforce_users_collection.find().to_list(length=None)
+        print(len(salesforce_users), "users to be processed")
+        gong_record = salesforce_instance.fetch_gong_records_by_salesforce_user_email("")
+
+        if gong_record["status_code"] != 200:
+            logger.error(f"Error while fetching Gong record by email: {gong_record['response']}")
+            return gong_record
+        gong_record = gong_record["gong_records"]
+
+        for i, user in enumerate(salesforce_users):
+            try:
+                logger.info(f"Processing user {i+1} of {len(salesforce_users)} with email {user['PersonEmail']}")
+                gong_ids, gong_participants_emails = [], []
+                for record in gong_record:
+                    if record.get("Gong__Primary_Account__c") and user['Id'] == record.get("Gong__Primary_Account__c",""):
+                        gong_ids.append(record.get("Gong__Call_ID__c"))
+                        gong_participants_emails.append(record.get("Gong__Participants_Emails__c"))
+
+                if gong_ids:
+                    await salesforce_users_collection.update_one(
+                        {"Id": user["Id"]},
+                        {"$set": {"gong_call_ids": gong_ids, "gong_participants_emails": gong_participants_emails}}
+                    )
+                    logger.info(f"Gong conversation IDs assigned to the candidate with email {user['PersonEmail']}")
+            except Exception as e:
+                import traceback
+                traceback.print_exc()
+                logger.error(f"Error while assigning Gong conversation IDs to the candidates: {e}")
+                continue
+
+        response = "Gong conversation IDs assigned to the candidates."
+
+        return {"response": response, "status_code": 200}
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        logger.error(f"Error while assigning Gong conversation IDs to the candidates: {e}")
+        return {
+            "response": f"An error occurred while assigning Gong conversation IDs to the candidates: {e}",
+            "status_code": 500,
+        }   
+    
+
+
+async def run_raw_saleforce_query_for_test():
+    """Run raw Salesforce query for testing."""
+    try:
+        salesforce_instance = SalesforceApiService()
+        response = salesforce_instance.run_raw_saleforce_query_for_test()
+        return {"response": response, "status_code": 200}
+    except Exception as e:
+        logger.error(f"Error while running raw Salesforce query for testing: {e}")
+        return {
+            "response": f"An error occurred while running raw Salesforce query for testing: {e}",
             "status_code": 500,
         }

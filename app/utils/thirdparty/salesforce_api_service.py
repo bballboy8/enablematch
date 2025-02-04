@@ -271,14 +271,18 @@ class SalesforceApiService:
             logger.error(f"Error fetching user from Salesforce: {e}")
             return {"message": f"An error occurred while fetching user from Salesforce: {e}", "status_code": 500}
         
-    def fetch_gong_records_by_salesforce_user_id(self, user_id):
-        """
-        Fetch Gong records by Salesforce user ID.
         
-        :param user_id: Salesforce user ID.
+    def fetch_gong_records_by_salesforce_user_email(self, user_email):
+        """
+        Fetch Gong records by Salesforce user email.
+        
+        :param user_email: Salesforce user email.
         """
         try:
-            query = f"SELECT Id, Name FROM Gong_Interaction_Details__c WHERE User__c = '{user_id}'"
+            query = f"""SELECT Gong__Participants_Emails__c , Gong__Call_ID__c, Gong__Primary_Account__c
+                        FROM Gong__Gong_Call__c 
+                        """
+                        # WHERE Gong__Participants_Emails__c LIKE '%{user_email}%'
             gong_records = self.sf.query_all(query)["records"]
             return {"gong_records": gong_records, "status_code": 200}
         except Exception as e:
@@ -290,15 +294,33 @@ class SalesforceApiService:
         Get the count of each table in Salesforce.
         """
         try:
-            query_1 = "SELECT QualifiedApiName FROM EntityDefinition WHERE IsCustomizable = true"
+            # query_1 = "SELECT QualifiedApiName FROM EntityDefinition WHERE IsCustomizable = true"
+            query_1 = "SELECT QualifiedApiName FROM EntityDefinition"
             tables = self.sf.query_all(query_1)["records"]
             table_count = {}
             for table in tables:
-                table_name = table["QualifiedApiName"]
-                query_2 = f"SELECT COUNT() FROM {table_name}"
-                count = self.sf.query(query_2)["totalSize"]
-                table_count[table_name] = count
+                try:
+                    table_name = table["QualifiedApiName"]
+                    query_2 = f"SELECT COUNT() FROM {table_name}"
+                    count = self.sf.query(query_2)["totalSize"]
+                    table_count[table_name] = count
+                except Exception as e:
+                    pass
             return {"table_count": table_count, "status_code": 200}
         except Exception as e:
             logger.error(f"Error fetching table count from Salesforce: {e}")
             return {"message": f"An error occurred while fetching table count from Salesforce: {e}", "status_code": 500}
+        
+    def run_raw_saleforce_query_for_test(self):
+        """
+        Run a raw Salesforce query for testing purposes.
+        """
+        try:
+            # query = "SELECT FIELDS(ALL) FROM Account WHERE RecordType.Name = 'Candidate- Person Accounts' and FirstName = 'Charlie' and LastName = 'Mitchell'  LIMIT 1 "
+            query = "SELECT FIELDS(ALL) from Gong__Gong_Call__c where Id='a0BVR00000AM8nb2AD' "
+            response = self.sf.query_all(query)
+            print(response["records"][:10], len(response["records"]))
+            return {"response": response, "status_code": 200}
+        except Exception as e:
+            logger.error(f"Error running raw Salesforce query: {e}")
+            return None
