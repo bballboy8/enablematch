@@ -205,7 +205,7 @@ async def get_salesforce_users():
             "status_code": 500,
         }
 
-    
+
 async def fetch_gong_record_by_email(email:str):
     """Fetch Gong record by email."""
     try:
@@ -218,7 +218,7 @@ async def fetch_gong_record_by_email(email:str):
             "response": f"An error occurred while fetching Gong record by email: {e}",
             "status_code": 500,
         }
-    
+
 
 async def get_each_table_count():
     """Get count of each table."""
@@ -232,7 +232,7 @@ async def get_each_table_count():
             "response": f"An error occurred while fetching count of each table: {e}",
             "status_code": 500,
         }
-    
+
 
 async def assign_gong_conversaation_ids_to_the_candidates():
     """Assign Gong conversation IDs to the candidates."""
@@ -282,7 +282,6 @@ async def assign_gong_conversaation_ids_to_the_candidates():
             "response": f"An error occurred while assigning Gong conversation IDs to the candidates: {e}",
             "status_code": 500,
         }   
-    
 
 
 async def run_raw_saleforce_query_for_test():
@@ -305,7 +304,7 @@ async def fetch_linkedin_url(session, user, salesforce_users_collection):
     """Fetch LinkedIn URL from tinyurl and update in DB."""
     try:
         url = user.get("LinkedIn_Profile__c")
-        if url and "tinyurl" in url:
+        if url:
             async with session.get(url, allow_redirects=True) as response:
                 linkedin_url = str(response.url)
                 await salesforce_users_collection.update_one(
@@ -316,17 +315,27 @@ async def fetch_linkedin_url(session, user, salesforce_users_collection):
     except Exception as e:
         logger.error(f"Error processing {user['PersonEmail']}: {e}")
 
+
 async def convert_tinyurl_to_linkedin():
     """Convert tinyurl to LinkedIn using async requests."""
     try:
         salesforce_users_collection = db["salesforce_users"]
-        salesforce_users = await salesforce_users_collection.find({'linkedin_url':{"$exists":False}, 'gong_call_ids':{"$exists":True}}).to_list(length=None)
+        salesforce_users = await salesforce_users_collection.find(
+            {
+                "linkedin_url": {"$exists": False},
+                "gong_call_ids": {"$exists": True},
+                "LinkedIn_Profile__c": {"$regex": "rb.gy", "$options": "i"},
+            }
+        ).to_list(length=None)
         logger.info(f"Processing {len(salesforce_users)} users")
-        
+
         async with aiohttp.ClientSession() as session:
-            tasks = [fetch_linkedin_url(session, user, salesforce_users_collection) for user in salesforce_users]
+            tasks = [
+                fetch_linkedin_url(session, user, salesforce_users_collection)
+                for user in salesforce_users
+            ]
             await asyncio.gather(*tasks)
-        
+
         return {"response": "Tinyurl converted to LinkedIn.", "status_code": 200}
     except Exception as e:
         logger.error(f"Error: {e}")
