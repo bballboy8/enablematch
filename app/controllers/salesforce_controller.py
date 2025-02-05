@@ -205,3 +205,16 @@ async def run_raw_saleforce_query_for_testing( background_task: BackgroundTasks,
     background_task.add_task(salesforce_service.run_raw_saleforce_query_for_test)
     logger.info("Run Raw Salesforce Query exit point")
     return JSONResponse(content="Recieved", status_code=200)  
+
+@router.put("/convert-tinyurl-to-linkedin")
+async def convert_tinyurl_to_linkedin(background_task: BackgroundTasks, user_id: str = Depends(get_current_user_id)):
+    """
+    Endpoint to convert TinyURL to LinkedIn.
+    
+    Returns:
+    - Success message.
+    """
+    logger.info("Convert TinyURL to LinkedIn entry point")
+    background_task.add_task(salesforce_service.convert_tinyurl_to_linkedin)
+    logger.info("Convert TinyURL to LinkedIn exit point")
+    return JSONResponse(content="Recieved", status_code=200)

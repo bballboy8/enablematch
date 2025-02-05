@@ -297,3 +297,37 @@ async def run_raw_saleforce_query_for_test():
             "response": f"An error occurred while running raw Salesforce query for testing: {e}",
             "status_code": 500,
         }
+
+import requests
+import aiohttp
+import asyncio
+async def fetch_linkedin_url(session, user, salesforce_users_collection):
+    """Fetch LinkedIn URL from tinyurl and update in DB."""
+    try:
+        url = user.get("LinkedIn_Profile__c")
+        if url and "tinyurl" in url:
+            async with session.get(url, allow_redirects=True) as response:
+                linkedin_url = str(response.url)
+                await salesforce_users_collection.update_one(
+                    {"Id": user["Id"]},
+                    {"$set": {"linkedin_url": linkedin_url}}
+                )
+                logger.info(f"Updated LinkedIn URL for {user['PersonEmail']}")
+    except Exception as e:
+        logger.error(f"Error processing {user['PersonEmail']}: {e}")
+
+async def convert_tinyurl_to_linkedin():
+    """Convert tinyurl to LinkedIn using async requests."""
+    try:
+        salesforce_users_collection = db["salesforce_users"]
+        salesforce_users = await salesforce_users_collection.find({'linkedin_url':{"$exists":False}, 'gong_call_ids':{"$exists":True}}).to_list(length=None)
+        logger.info(f"Processing {len(salesforce_users)} users")
+        
+        async with aiohttp.ClientSession() as session:
+            tasks = [fetch_linkedin_url(session, user, salesforce_users_collection) for user in salesforce_users]
+            await asyncio.gather(*tasks)
+        
+        return {"response": "Tinyurl converted to LinkedIn.", "status_code": 200}
+    except Exception as e:
+        logger.error(f"Error: {e}")
+        return {"response": f"Error: {e}", "status_code": 500}
