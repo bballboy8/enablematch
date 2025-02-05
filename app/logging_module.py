@@ -42,9 +42,12 @@ rotator = Rotator(size=10000000, at=datetime.time(0, 0, 0))
 separator = "\n------------------------------------------------------------------------------------------------------\n"
 fmt = "{level} | {time:ddd MMMM YYYY, HH:mm:ss:SSS} |{file.path}| {name}:{function}:{line}" + separator + "{message}" + separator
 logger.remove()
-logger = copy.deepcopy(logger)     
-logger = logger.opt(colors=True)
-logger.add(sys.stdout, colorize=True, level=constants.LOG_LEVEL, format=fmt, enqueue=True, backtrace=True)
-logger.enable("logger")
-logger.add("./logs/enablematch_server.log", colorize=True, rotation=rotator.should_rotate, level=constants.LOG_LEVEL, format=fmt, enqueue=True, backtrace=True)
-logger.add(sys.stderr, colorize=True, level="ERROR", format=fmt, enqueue=True, backtrace=True)
+logger = copy.deepcopy(logger)
+try:     
+    logger = logger.opt(colors=True)
+    logger.add(sys.stdout, colorize=True, level=constants.LOG_LEVEL, format=fmt, enqueue=True, backtrace=True)
+    logger.enable("logger")
+    logger.add("./logs/enablematch_server.log", colorize=True, rotation=rotator.should_rotate, level=constants.LOG_LEVEL, format=fmt, enqueue=True, backtrace=True)
+    logger.add(sys.stderr, colorize=True, level="ERROR", format=fmt, enqueue=True, backtrace=True)
+except Exception as e:
+    logger.error(f"Error in setting up logger: {e}")

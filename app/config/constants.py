@@ -10,6 +10,7 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/token")
 USERS_COLLECTION = "users"
 CALL_DETAILS_COLLECTION = "gong_interaction_details"
 USERS_PROFILE_COLLECTION = "user_profile"
+USERS_LINKEDIN_PROFILE_COLLECTION = "users_linkedin_profile"
 SALESFORCE_USERS_COLLECTION = "salesforce_users"
 
 # keys
