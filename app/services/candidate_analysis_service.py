@@ -3,6 +3,9 @@ from logging_module import logger
 from utils.thirdparty import gong_api_service
 import json
 from services import proxy_curl_service
+from config.db_connection import db
+from config import constants
+from bson import ObjectId
 
 
 async def analyze_candidate(job_description, call_id, salesforce_user_id, linkedin_profile_url=None):
@@ -101,5 +104,58 @@ async def test_gpt(user_id):
         logger.error(f"Error in testing GPT API: {e}")
         return {
             "response": f"An error occurred while testing the GPT API: {e}",
+            "status_code": 500,
+        }
+    
+async def process_transcript_by_id(transcript_id):
+    try:
+        logger.info(f"Processing transcript by id: {transcript_id}")
+        transcript = await db[constants.USERS_GONG_TRANSCRIPT_COLLECTION].find_one({"_id": ObjectId(transcript_id)})
+        if not transcript:
+            return
+        transcript_text = transcript.get("transcript", "")
+        if "conversation_summary" in transcript:
+            return
+        conversation_summary = await helper_functions.generate_skills_and_strength_of_candidate(transcript_text)
+        if conversation_summary.get("status_code") == 500:
+            return
+        await db[constants.USERS_GONG_TRANSCRIPT_COLLECTION].update_one(
+            {"_id": ObjectId(transcript_id)},
+            {"$set": {"conversation_summary": conversation_summary["response"]}},
+        )
+        logger.info(f"Conversation summary generated for transcript by id: {transcript_id}")
+    except Exception as e:
+        logger.error(f"Error in processing transcript by id: {e}")
+        return {
+            "response": f"An error occurred while processing transcript by id: {e}",
+            "status_code": 500,
+        }
+
+import asyncio
+async def generate_conversation_summary():
+    try:
+        salesforce_users_collection = db[constants.SALESFORCE_USERS_COLLECTION]
+        users = await salesforce_users_collection.find({"gong_transcript_ids": {"$exists": True}}).to_list(length=None)
+        if not users:
+            return {
+                "response": "User not found.",
+                "status_code": 404,
+            }
+        for i, user in enumerate(users):
+            gong_transcript_ids = user.get("gong_transcript_ids", [])
+            print(f"Lenght of gong_transcript_ids: {len(gong_transcript_ids)}")
+            await asyncio.gather(*[process_transcript_by_id(transcript_id) for transcript_id in gong_transcript_ids])
+
+                
+            logger.info(f"Conversation summary generated for {i+1} users.")
+        
+        return {
+            "response": "Conversation summary generated successfully.",
+            "status_code": 200,
+        }
+    except Exception as e:
+        logger.error(f"Error in generating conversation summary: {e}")
+        return {
+            "response": f"An error occurred while generating conversation summary: {e}",
             "status_code": 500,
         }

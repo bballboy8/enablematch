@@ -12,6 +12,7 @@ CALL_DETAILS_COLLECTION = "gong_interaction_details"
 USERS_PROFILE_COLLECTION = "user_profile"
 USERS_LINKEDIN_PROFILE_COLLECTION = "users_linkedin_profile"
 SALESFORCE_USERS_COLLECTION = "salesforce_users"
+USERS_GONG_TRANSCRIPT_COLLECTION = "users_gong_transcript"
 
 # keys
 USER_ID_FIELD = "user_id"

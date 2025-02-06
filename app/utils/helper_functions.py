@@ -391,3 +391,29 @@ async def summarize_conversation(conversation_transcript, input_resume):
             "response": f"An error occurred while processing the request: {e}",
             "status_code": 500,
         }
+    
+async def generate_skills_and_strength_of_candidate(conversation_transcript):
+    try:
+        conversation_transcript = "Here is the conversation transcript: " + conversation_transcript
+        response = client.chat.completions.create(
+            model="gpt-4o",
+            messages=[
+                {
+                    "role": "system",
+                    "content": "You are an expert summarizer. You are going to extract the Strength, Skills and Overall how is the conversation for job role and summarize the conversation. You are going to be a bit more critical in your analysis. Also you need to look for following points 1. Do the candidates refer to metrics? 2. Are they concise or long winded? 3. Do they minimize filler words? 4. Do they talk like an executive? Be sure to mention the key points of the conversation. 5.You always need to be specific about the points specific like if a candidate is talking about a project, you need to mention the project name, the role of the candidate in the project, the outcome of the project, and the impact of the project. You need to be very specific about the points.",
+                },
+                {"role": "user", "content": conversation_transcript},
+            ],
+        )
+        finish_reason = response.choices[0].finish_reason
+        response_data = response.choices[0].message.content
+        return {
+            "response": response_data,
+            "finish_reason": finish_reason,
+            "status_code": 200,
+        }
+    except Exception as e:
+        return {
+            "response": f"An error occurred while processing the request: {e}",
+            "status_code": 500,
+        }

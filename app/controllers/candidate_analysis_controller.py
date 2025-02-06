@@ -6,7 +6,7 @@ from fastapi.responses import JSONResponse
 from typing import Optional
 from utils import helper_functions
 from blueprints.candidate_analysis_blueprint import CandidateAnalysisRequestBody
-
+from fastapi.background import BackgroundTasks
 router = APIRouter()
 
 
@@ -49,4 +49,19 @@ async def get_content_of_pdf_from_salesforce_user(salesforce_user_id: str, user_
     logger.info("Get content of PDF from Salesforce user exit point")
     return JSONResponse(
         content={"response": response}, status_code=response["status_code"]
+    )
+
+
+@router.put("/generate-conversation-summary")
+async def generate_conversation_summary(
+    background_tasks: BackgroundTasks, user_id: str = Depends(get_current_user_id)  
+):
+    """Generate a conversation summary based on the call transcript."""
+    logger.info("Generate conversation summary entry point")
+    background_tasks.add_task(candidate_analysis_service.generate_conversation_summary)
+    background_tasks
+    logger.info("Generate conversation summary exit point")
+    return JSONResponse(
+        content={"response": "Conversation summary generation has been initiated."},
+        status_code=200,
     )

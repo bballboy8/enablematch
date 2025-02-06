@@ -3,6 +3,8 @@ from logging_module import logger
 from models.gong import CallDetailModel
 from config.db_connection import db
 from config import constants
+from utils import helper_functions
+from bson import ObjectId
 
 async def get_gong_users():
     """Get users from Gong."""
@@ -87,7 +89,7 @@ async def gong_data_loader():
             "response": f"An error occurred while loading data from Gong.{e}",
             "status_code": 500,
         }
-    
+
 async def save_gong_record_in_db(records):
     """Save Gong records in database."""
     try:
@@ -110,7 +112,7 @@ async def save_gong_record_in_db(records):
             "response": f"An error occurred while saving records in database.{e}",
             "status_code": 500,
         }
-    
+
 async def get_matching_records_with_title(title):
     """Get matching records with title from database."""
     try:
@@ -124,5 +126,66 @@ async def get_matching_records_with_title(title):
         logger.error(f"Error while fetching records from database: {e}")
         return {
             "response": f"An error occurred while fetching records from database.{e}",
+            "status_code": 500,
+        }
+
+import time
+async def collect_caIl_transcripts():
+    try:
+        logger.info("Collecting Call Transcripts for Salesforce User")
+        salesforce_users_collection = db[constants.SALESFORCE_USERS_COLLECTION]
+        users_gong_transcript_collection = db[
+            constants.USERS_GONG_TRANSCRIPT_COLLECTION
+        ]
+
+        salesforce_users = await salesforce_users_collection.find(
+            {'gong_call_ids': {'$exists':True}, 'linkedin_profile':{'$exists':True}}
+        ).to_list(length=None)
+
+        logger.info(f"Total Salesforce Users: {len(salesforce_users)}")
+
+        total_count = 0
+        for user in salesforce_users:
+            if "NA" == user.get("linkedin_profile", ""):
+                continue
+            salesforce_user_id = user["Id"]
+            call_ids = user.get("gong_call_ids", [])
+
+            transcript = await gong_api_service.get_call_transcript_by_call_id(call_ids)
+            if transcript.get("status_code") == 500:
+                return transcript
+            call_transcripts = transcript["response"]["callTranscripts"]
+            logger.info(f"Total call transcripts: {len(call_transcripts)}")
+            for i in range(len(call_transcripts)):
+                transcript = call_transcripts[i]
+                formatted_transcript_response = helper_functions.parse_transcript(
+                    transcript
+                )
+                if formatted_transcript_response.get("status_code") == 500:
+                    continue
+                inserted = await users_gong_transcript_collection.insert_one(
+                    {
+                        "user_id": salesforce_user_id,
+                        "call_id": transcript["callId"],
+                        "transcript": formatted_transcript_response["transcript"],
+                    }
+                )
+                inserted_id = str(inserted.inserted_id)
+                logger.debug(f"Inserted transcript with id: {inserted_id}")
+                await salesforce_users_collection.update_one(
+                    {"Id": salesforce_user_id},
+                    {"$push": {"gong_transcript_ids": inserted_id}},
+                )
+                total_count += 1
+                time.sleep(1)
+                logger.debug(f"Current count: {total_count}")
+        logger.info(f"Total call transcripts inserted: {total_count}")
+        logger.info("Call Transcripts collected successfully")
+        return {"response": "Transcripts collected successfully", "status_code": 200}
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return {
+            "response": f"An error occurred while collecting call transcripts.{e}",
             "status_code": 500,
         }

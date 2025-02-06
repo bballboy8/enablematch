@@ -6,6 +6,7 @@ from utils.dependencies import get_current_user_id
 from services import gong_service
 from fastapi.responses import JSONResponse
 from typing import Optional
+from fastapi.background import BackgroundTasks
 
 router = APIRouter()
 
@@ -32,9 +33,9 @@ async def get_calls_by_date_range(
     return JSONResponse(content=response, status_code=response["status_code"])
 
 
-@router.get("/get-call-transcript-by-call-id")
+@router.post("/get-call-transcript-by-call-id")
 async def get_call_transcript_by_call_id(
-    call_id: str, user_id: str = Depends(get_current_user_id)
+    call_id: list[str], user_id: str = Depends(get_current_user_id)
 ):
     """Get call transcript by call id from Gong."""
     logger.info("Get Call Transcript by Call ID entry point")
@@ -60,3 +61,12 @@ async def get_matching_calls(
     response = await gong_service.get_matching_records_with_title(search_query)
     logger.info("Get Matching Calls title exit point")
     return JSONResponse(content=response, status_code=response["status_code"])
+
+
+@router.get("/collect-call-transcripts")
+async def collect_call_transcripts(background_task: BackgroundTasks, user_id: str = Depends(get_current_user_id)):
+    """Collect call transcripts from Gong."""
+    logger.info("Collect Call Transcripts entry point")
+    background_task.add_task(gong_service.collect_caIl_transcripts)
+    logger.info("Collect Call Transcripts exit point")
+    return JSONResponse(content={"response": "Call transcripts collection started."}, status_code=200)
