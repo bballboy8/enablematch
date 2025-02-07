@@ -55,7 +55,7 @@ async def get_linkedin_person(url, user_id=None):
 async def get_key_value_concatenation(data):
     # List of expected keys
     keys = [
-        "public_identifier", "profile_pic_url", "background_cover_image_url",
+        "public_identifier",
         "first_name", "last_name", "full_name", "follower_count", "occupation",
         "headline", "summary", "country", "country_full_name", "city", "state",
         "experiences", "education", "languages", "languages_and_proficiencies",
@@ -65,11 +65,22 @@ async def get_key_value_concatenation(data):
         "accomplishment_test_scores", "volunteer_work", "recommendations", "skills",
     ]
     
-    # Collect "key: value" pairs for the keys that exist in the dictionary
-    key_value_pairs = [f"{key}: {data[key]}" for key in keys if key in data and data[key]]
+    key_value_pairs = []
     
-    # Join and return the concatenated string
-    return "".join(key_value_pairs)
+    for key in keys:
+        if key in data and data[key]:
+            if key in {"education", "experiences", "volunteer_work"} and isinstance(data[key], list):  
+                # Remove keys that contain "url" (case-insensitive)
+                filtered_entries = [
+                    {k: v for k, v in entry.items() if "url" not in k.lower()}  
+                    for entry in data[key]
+                ]
+                key_value_pairs.append(f"{key} - {filtered_entries}")
+            else:
+                key_value_pairs.append(f"{key} - {data[key]}")
+    
+    return " ".join(key_value_pairs)
+
 import asyncio
 async def fetch_and_assign_linkedin_data_to_users():
     try:

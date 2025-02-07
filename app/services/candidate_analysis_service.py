@@ -6,6 +6,7 @@ from services import proxy_curl_service
 from config.db_connection import db
 from config import constants
 from bson import ObjectId
+from utils.thirdparty.pinecone_service import PineConeDBService
 
 
 async def analyze_candidate(job_description, call_id, salesforce_user_id, linkedin_profile_url=None):
@@ -106,7 +107,7 @@ async def test_gpt(user_id):
             "response": f"An error occurred while testing the GPT API: {e}",
             "status_code": 500,
         }
-    
+
 async def process_transcript_by_id(transcript_id):
     try:
         logger.info(f"Processing transcript by id: {transcript_id}")
@@ -146,9 +147,8 @@ async def generate_conversation_summary():
             print(f"Lenght of gong_transcript_ids: {len(gong_transcript_ids)}")
             await asyncio.gather(*[process_transcript_by_id(transcript_id) for transcript_id in gong_transcript_ids])
 
-                
             logger.info(f"Conversation summary generated for {i+1} users.")
-        
+
         return {
             "response": "Conversation summary generated successfully.",
             "status_code": 200,
@@ -157,5 +157,110 @@ async def generate_conversation_summary():
         logger.error(f"Error in generating conversation summary: {e}")
         return {
             "response": f"An error occurred while generating conversation summary: {e}",
+            "status_code": 500,
+        }
+
+
+async def fetch_target_candidates():
+    try:
+        logger.info("Fetching target candidates")
+        salesforce_users_collection = db[constants.SALESFORCE_USERS_COLLECTION]
+        target_candidates_collection = db[constants.TARGET_CANDIDATE_COLLECTION]
+        users_gong_transcript_collection = db[
+            constants.USERS_GONG_TRANSCRIPT_COLLECTION
+        ]
+        users_linkedin_profile_collection = db[
+            constants.USERS_LINKEDIN_PROFILE_COLLECTION
+        ]
+
+        users = await salesforce_users_collection.find(
+            {
+                "gong_transcript_ids": {"$exists": True},
+                "linkedin_profile": {"$exists": True},
+            }
+        ).to_list(None)
+        if not users:
+            return {
+                "response": "User not found.",
+                "status_code": 404,
+            }
+        logger.info(f"Total users found: {len(users)}")
+
+        target_candidates = []
+        for i, user in enumerate(users):
+            gong_transcript_ids = user.get("gong_transcript_ids", [])
+            conversation_summary = []
+            for transcript_id in gong_transcript_ids:
+                transcript = await users_gong_transcript_collection.find_one(
+                    {"_id": ObjectId(transcript_id)}
+                )
+                if not transcript:
+                    continue
+                conversation_summary.append(transcript.get("conversation_summary", ""))
+            user_profile = await users_linkedin_profile_collection.find_one(
+                {"_id": ObjectId(user.get("linkedin_profile", ""))}
+            )
+            if not user_profile:
+                continue
+            input_resume = await proxy_curl_service.get_key_value_concatenation(
+                user_profile
+            )
+            target_candidates.append(
+                {
+                    "user_id": str(user.get("_id", "")),
+                    "conversation_summary": " ".join(conversation_summary),
+                    "input_resume": input_resume,
+                }
+            )
+
+        cooked_target_candidates = []
+        for candidate in target_candidates:
+            metadata = {
+                "conversation_summary": candidate["conversation_summary"],
+                "input_resume": candidate["input_resume"],
+            }
+            text = metadata["conversation_summary"] + metadata["input_resume"]
+            cooked_target_candidates.append(
+                {"id": candidate["user_id"], "text": text, "metadata": metadata}
+            )
+            if not await target_candidates_collection.find_one(
+                {"id": candidate["user_id"]}
+            ):
+                await target_candidates_collection.insert_one(candidate)
+
+
+        logger.info("Target candidates fetched successfully.")
+        return {
+            "response": target_candidates,
+            "status_code": 200,
+        }
+    except Exception as e:
+        logger.error(f"Error in fetching target candidates: {e}")
+        return {
+            "response": f"An error occurred while fetching target candidates: {e}",
+            "status_code": 500,
+        }
+
+async def upload_cooked_records_to_pinecone():
+    try:
+        pinecone_client = PineConeDBService()
+        target_candidates_collection = db[constants.TARGET_CANDIDATE_COLLECTION]
+        target_candidates = await target_candidates_collection.find({}).to_list(None)
+        cooked_target_candidates = []
+        for candidate in target_candidates:
+            metadata = {
+                "conversation_summary": candidate["conversation_summary"],
+                "input_resume": candidate["input_resume"],
+            }
+            text = metadata["conversation_summary"] + metadata["input_resume"]
+            cooked_target_candidates.append(
+                {"id": candidate["user_id"], "text": text, "metadata": metadata}
+            )
+
+        await pinecone_client.upsert_data(cooked_target_candidates)
+    except Exception as e:
+        logger.error(f"Error in uploading cooked records to Pinecone: {e}")
+        return {
+            "response": f"An error occurred while uploading cooked records to Pinecone: {e}",
             "status_code": 500,
         }

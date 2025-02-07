@@ -4,6 +4,9 @@ from pinecone.grpc import PineconeGRPC as Pinecone
 from pinecone import ServerlessSpec
 import uuid
 from utils.thirdparty.openai_service import OpenAIService
+import uuid
+from itertools import islice
+from config.db_connection import db
 
 class PineConeDBService:
     def __init__(self):
@@ -75,49 +78,60 @@ class PineConeDBService:
             logger.error(f"Failed to create index {index_name}: {e}")
             return {"status_code": 500, "response": str(e)}
 
+    
     async def upsert_data(self, data):
         """
-        Embed and upsert data into the specified Pinecone index.
+        Embed and upsert data into the specified Pinecone index in batches of 100.
+        
         Args:
             data (list[dict]): A list of dictionaries containing the records.
+        
         Returns:
             dict: Response with status code and message.
         """
         try:
             index = self.pinecone_client.Index(constants.PINECONE_INDEX)
 
-            upsert_list = []
-            for record in data:
-                if not isinstance(record, dict):
-                    logger.warning(f"Skipping invalid record: {record}")
-                    continue
-                record_id = str(uuid.uuid4())
-                record_text = " ".join(
-                    f"{value}" for _, value in record.items() if value
-                )
-                embedding = await self._generate_embedding(record_text)
+            async def process_batch(batch):
+                upsert_list = []
+                for record in batch:
+                    if not isinstance(record, dict):
+                        logger.warning(f"Skipping invalid record: {record}")
+                        continue
+                    record_id = record.get("id", str(uuid.uuid4()))
+                    record_text = record.get("text")
+                    embedding = await self._generate_embedding(record_text)
 
-                if embedding["status_code"] != 200:
-                    return embedding
-                embedding_value = embedding["response"]
-                upsert_list.append(
-                    {"id": record_id, "values": embedding_value, "metadata": record}
-                )
+                    if embedding["status_code"] != 200:
+                        return embedding
+                    embedding_value = embedding["response"]
+                    upsert_list.append(
+                        {"id": record_id, "values": embedding_value, "metadata": record}
+                    )
 
-            if upsert_list:
-                index.upsert(upsert_list)
-                return {
-                    "status_code": 200,
-                    "response": f"{len(upsert_list)} records upserted.",
-                }
-            else:
-                logger.warning("No valid records to upsert.")
+                if upsert_list:
+                    index.upsert(upsert_list)
+                    logger.debug(f"{len(upsert_list)} records upserted.")
+
+                    return {"status_code": 200, "response": f"{len(upsert_list)} records upserted."}
                 return {"status_code": 400, "response": "No valid records to upsert."}
+
+            def batch_generator(iterable, batch_size=100):
+                it = iter(iterable)
+                while batch := list(islice(it, batch_size)):
+                    yield batch
+
+            results = []
+            for batch in batch_generator(data, 100):
+                result = await process_batch(batch)
+                results.append(result)
+
+            return {"status_code": 200, "response": f"Total {sum(len(r['response'].split()[0]) for r in results if r['status_code'] == 200)} records upserted."}
+
         except Exception as e:
-            logger.error(
-                f"Failed to upsert data into index {constants.PINECONE_INDEX}: {e}"
-            )
+            logger.error(f"Error upserting data: {e}")
             return {"status_code": 500, "response": str(e)}
+
 
     async def query_data(self, query_text, top_k=3, index_name=None,  retry_count=0, max_retries=5):
         """

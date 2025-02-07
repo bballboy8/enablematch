@@ -65,3 +65,25 @@ async def generate_conversation_summary(
         content={"response": "Conversation summary generation has been initiated."},
         status_code=200,
     )
+
+@router.get("/get-target-candidates")
+async def get_target_candidates(background_tasks: BackgroundTasks, user_id: str = Depends(get_current_user_id)):
+    """Get the target candidates for the user."""
+    logger.info("Get target candidates entry point")
+    background_tasks.add_task(candidate_analysis_service.fetch_target_candidates)
+    logger.info("Get target candidates exit point")
+    return JSONResponse(
+        content={"response": "Target candidates generation has been initiated."},
+        status_code=200,
+    )
+
+@router.put("/upload-cooked-records-to-pinecone")
+async def upload_cooked_records_to_pinecone(background_tasks: BackgroundTasks, user_id: str = Depends(get_current_user_id)):
+    """Upload the cooked records to Pinecone."""
+    logger.info("Upload cooked records to Pinecone entry point")
+    background_tasks.add_task(candidate_analysis_service.upload_cooked_records_to_pinecone)
+    logger.info("Upload cooked records to Pinecone exit point")
+    return JSONResponse(
+        content={"response": "Cooked records upload to Pinecone has been initiated."},
+        status_code=200,
+    )
