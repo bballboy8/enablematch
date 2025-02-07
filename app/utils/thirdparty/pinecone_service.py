@@ -108,7 +108,7 @@ class PineConeDBService:
                     logger.debug(f"Embedding generated for record {record_id}")
                     embedding_value = embedding["response"]
                     upsert_list.append(
-                        {"id": record_id, "values": embedding_value, "metadata": record_text}
+                        {"id": record_id, "values": embedding_value, "metadata": {'text':record_text, 'id':record_id}}
                     )
 
                 if upsert_list:
