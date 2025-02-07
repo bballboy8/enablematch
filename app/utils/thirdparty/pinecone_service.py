@@ -116,7 +116,7 @@ class PineConeDBService:
                     return {"status_code": 200, "response": f"{len(upsert_list)} records upserted."}
                 return {"status_code": 400, "response": "No valid records to upsert."}
 
-            def batch_generator(iterable, batch_size=100):
+            def batch_generator(iterable, batch_size=10):
                 it = iter(iterable)
                 while batch := list(islice(it, batch_size)):
                     yield batch
