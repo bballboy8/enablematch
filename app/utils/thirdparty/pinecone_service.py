@@ -104,9 +104,11 @@ class PineConeDBService:
 
                     if embedding["status_code"] != 200:
                         return embedding
+                    
+                    logger.debug(f"Embedding generated for record {record_id}")
                     embedding_value = embedding["response"]
                     upsert_list.append(
-                        {"id": record_id, "values": embedding_value, "metadata": record}
+                        {"id": record_id, "values": embedding_value, "metadata": record_text}
                     )
 
                 if upsert_list:
@@ -122,7 +124,7 @@ class PineConeDBService:
                     yield batch
 
             results = []
-            for batch in batch_generator(data, 100):
+            for batch in batch_generator(data, 10):
                 result = await process_batch(batch)
                 results.append(result)
 

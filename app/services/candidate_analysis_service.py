@@ -256,7 +256,7 @@ async def upload_cooked_records_to_pinecone():
             cooked_target_candidates.append(
                 {"id": candidate["user_id"], "text": text, "metadata": metadata}
             )
-
+        logger.info("Uploading cooked records to Pinecone")
         await pinecone_client.upsert_data(cooked_target_candidates)
     except Exception as e:
         logger.error(f"Error in uploading cooked records to Pinecone: {e}")
