@@ -1,5 +1,8 @@
 from utils.thirdparty.pinecone_service import PineConeDBService
 from logging_module import logger
+from config.db_connection import db
+from config import constants
+from bson import ObjectId
 
 
 async def get_pinecone_indexes_service():
@@ -80,9 +83,17 @@ async def query_pinecone_index_service(query:str):
             - response (list): A list of similar records retrieved from the index.
     """
     try:
+        targeted_candidates_collection = db[constants.TARGET_CANDIDATE_COLLECTION]
         pinecone_client = PineConeDBService()
         response = await pinecone_client.query_data(query, 3)
-        return response
+        if response["status_code"] != 200:
+            return response
+        records = [ record for record in response["response"]["matches"]]
+        query_result = []
+        for record in records:
+            record_id = record["id"]
+            query_result.append(await targeted_candidates_collection.find_one({"user_id": record_id}, {"_id": 0}))
+        return {"status_code": 200, "response": query_result}
     except Exception as e:
         logger.error(f"Failed to query Pinecone index: {e}")
         return {"status_code": 500, "response": str(e)}
