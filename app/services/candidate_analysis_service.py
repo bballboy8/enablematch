@@ -264,3 +264,63 @@ async def upload_cooked_records_to_pinecone():
             "response": f"An error occurred while uploading cooked records to Pinecone: {e}",
             "status_code": 500,
         }
+    
+import asyncio
+
+import asyncio
+import json
+
+async def process_record(record, job_description):
+    try:
+        logger.info(f"Processing record {record['id']}")
+        targeted_candidates_collection = db[constants.TARGET_CANDIDATE_COLLECTION]
+        record_id = record["id"]
+        candidate = await targeted_candidates_collection.find_one({"user_id": record_id}, {"_id": 0})
+        if not candidate:
+            return None
+
+        candidate["score"] = record["score"] * 100
+        input_transcript = candidate.get("conversation_summary", "")
+        input_resume = candidate.get("input_resume", "")
+        prompt = helper_functions.create_prompt(job_description, input_transcript, input_resume, "", "linkedin")
+        system_prompt = helper_functions.get_system_prompt()
+
+        response = await asyncio.to_thread(helper_functions.get_gpt_response, prompt, system_prompt)
+
+        if response.get("status_code") == 500:
+            logger.error(f"Error processing record {record_id}: {response['response']}")
+            return None
+
+        raw_response = response.get('response', '')
+        cleaned_json_string = raw_response.strip('```json').strip('```').strip()
+        formatted_response = json.loads(cleaned_json_string)
+        candidate["gpt_response"] = formatted_response
+        # Delete input_resume and conversation_summary
+        del candidate["input_resume"]
+        del candidate["conversation_summary"]
+        logger.info(f"Record {record_id} processed successfully")
+        return candidate
+    except Exception as e:
+        logger.error(f"Error processing record {record_id}: {e}")
+        return None
+
+async def fetch_candidates_for_matching_job_description(job_description):
+    try:
+        pinecone_client = PineConeDBService()
+        response = await pinecone_client.query_data(job_description, 3)
+
+        if response["status_code"] != 200:
+            return response
+
+        records = [record for record in response["response"]["matches"]]
+        query_result = []
+        tasks = [process_record(record, job_description) for record in records]
+        results = await asyncio.gather(*tasks)
+        # Filter out None results
+        query_result = [res for res in results if res]
+
+        return {"status_code": 200, "response": query_result}
+
+    except Exception as e:
+        logger.error(f"Failed to query Pinecone index: {e}")
+        return {"status_code": 500, "response": str(e)}

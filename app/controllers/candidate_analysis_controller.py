@@ -5,7 +5,7 @@ from services import candidate_analysis_service
 from fastapi.responses import JSONResponse
 from typing import Optional
 from utils import helper_functions
-from blueprints.candidate_analysis_blueprint import CandidateAnalysisRequestBody
+from blueprints.candidate_analysis_blueprint import CandidateAnalysisRequestBody, CandidateSuggestionsRequestBody
 from fastapi.background import BackgroundTasks
 router = APIRouter()
 
@@ -86,4 +86,14 @@ async def upload_cooked_records_to_pinecone(background_tasks: BackgroundTasks, u
     return JSONResponse(
         content={"response": "Cooked records upload to Pinecone has been initiated."},
         status_code=200,
+    )
+
+@router.post("/get-candidate-suggestions")
+async def get_candidate_suggestions(request: CandidateSuggestionsRequestBody,  user_id: str = Depends(get_current_user_id)):
+    """Get the candidate suggestions for the user."""
+    logger.info("Get candidate suggestions entry point")
+    response = await candidate_analysis_service.fetch_candidates_for_matching_job_description(request.job_description)
+    logger.info("Get candidate suggestions exit point")
+    return JSONResponse(
+        content={"response": response}, status_code=response["status_code"]
     )
