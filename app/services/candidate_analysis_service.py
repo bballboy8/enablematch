@@ -9,6 +9,47 @@ from bson import ObjectId
 from utils.thirdparty.pinecone_service import PineConeDBService
 
 
+async def analyze_database_candidate(job_description, db_id):
+    try:
+        logger.info(f"Processing record {db_id}")
+        salesforce_users_collection = db[constants.SALESFORCE_USERS_COLLECTION]
+        targeted_candidates_collection = db[constants.TARGET_CANDIDATE_COLLECTION]
+        candidate = await targeted_candidates_collection.find_one({"user_id": db_id}, {"_id": 0})
+        if not candidate:
+            return None
+        notes = ""
+        salesforce_notes = salesforce_users_collection.find_one({"_id": ObjectId(db_id)}, {"Summary_of_Candidate__c": 1})
+        if salesforce_notes:
+            notes = salesforce_notes.get("Summary_of_Candidate__c", "")
+
+        input_transcript = candidate.get("conversation_summary", "")
+        input_resume = candidate.get("input_resume", "")
+        prompt = helper_functions.create_prompt(job_description, input_transcript, input_resume, notes, "linkedin")
+        system_prompt = helper_functions.get_system_prompt()
+
+        response = await asyncio.to_thread(helper_functions.get_gpt_response, prompt, system_prompt)
+
+        if response.get("status_code") == 500:
+            logger.error(f"Error processing record {db_id}: {response['response']}")
+            return None
+
+        raw_response = response.get('response', '')
+        cleaned_json_string = raw_response.strip('```json').strip('```').strip()
+        formatted_response = json.loads(cleaned_json_string)
+        candidate["gpt_response"] = formatted_response
+        # Delete input_resume and conversation_summary
+        del candidate["input_resume"]
+        del candidate["conversation_summary"]
+        logger.info(f"Record {db_id} processed successfully")
+        return candidate
+    except Exception as e:
+        logger.error(f"Error in analyzing database candidate: {e}")
+        return {
+            "response": f"An error occurred while analyzing the database candidate: {e}",
+            "status_code": 500,
+        }
+
+
 async def analyze_candidate(job_description, call_id, salesforce_user_id, linkedin_profile_url=None):
     """Analyze the candidate based on job description and transcript."""
     try:
@@ -274,15 +315,21 @@ async def process_record(record, job_description):
     try:
         logger.info(f"Processing record {record['id']}")
         targeted_candidates_collection = db[constants.TARGET_CANDIDATE_COLLECTION]
+        salesforce_users_collection = db[constants.SALESFORCE_USERS_COLLECTION]
         record_id = record["id"]
         candidate = await targeted_candidates_collection.find_one({"user_id": record_id}, {"_id": 0})
         if not candidate:
             return None
+        
+        notes = ""
+        salesforce_notes = salesforce_users_collection.find_one({"_id": ObjectId(record)}, {"Summary_of_Candidate__c": 1})
+        if salesforce_notes:
+            notes = salesforce_notes.get("Summary_of_Candidate__c", "")
 
         candidate["score"] = record["score"] * 100
         input_transcript = candidate.get("conversation_summary", "")
         input_resume = candidate.get("input_resume", "")
-        prompt = helper_functions.create_prompt(job_description, input_transcript, input_resume, "", "linkedin")
+        prompt = helper_functions.create_prompt(job_description, input_transcript, input_resume, notes, "linkedin")
         system_prompt = helper_functions.get_system_prompt()
 
         response = await asyncio.to_thread(helper_functions.get_gpt_response, prompt, system_prompt)
