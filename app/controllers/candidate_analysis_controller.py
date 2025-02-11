@@ -5,7 +5,7 @@ from services import candidate_analysis_service
 from fastapi.responses import JSONResponse
 from typing import Optional
 from utils import helper_functions
-from blueprints.candidate_analysis_blueprint import CandidateAnalysisRequestBody, CandidateSuggestionsRequestBody
+from blueprints.candidate_analysis_blueprint import CandidateAnalysisRequestBody, CandidateSuggestionsRequestBody, DBCandidateAnalysisRequestBody
 from fastapi.background import BackgroundTasks
 router = APIRouter()
 
@@ -38,7 +38,20 @@ async def analyze_candidate(
         content={"response": response}, status_code=response["status_code"]
     )
 
-
+@router.post("/analyze-database-candidate")
+async def analyze_database_candidate(
+    request: DBCandidateAnalysisRequestBody,
+    user_id: str = Depends(get_current_user_id)
+):
+    """Analyze the candidate based on job description and transcript."""
+    logger.info("Analyze database candidate entry point")
+    response = await candidate_analysis_service.analyze_database_candidate(
+    db_id=request.db_user_id, job_description=request.job_description
+    )
+    logger.info("Analyze database candidate exit point")
+    return JSONResponse(
+        content={"response": response}, status_code=response["status_code"]
+    )
 @router.get("/get-content-of-pdf-from-salesforce-user")
 async def get_content_of_pdf_from_salesforce_user(salesforce_user_id: str, user_id: str = Depends(get_current_user_id)):
     """Get the content of the first PDF file from a Salesforce user."""

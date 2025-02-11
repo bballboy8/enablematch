@@ -18,7 +18,7 @@ async def analyze_database_candidate(job_description, db_id):
         if not candidate:
             return None
         notes = ""
-        salesforce_notes = salesforce_users_collection.find_one({"_id": ObjectId(db_id)}, {"Summary_of_Candidate__c": 1})
+        salesforce_notes = await salesforce_users_collection.find_one({"_id": ObjectId(db_id)}, {"Summary_of_Candidate__c": 1})
         if salesforce_notes:
             notes = salesforce_notes.get("Summary_of_Candidate__c", "")
 
@@ -41,7 +41,7 @@ async def analyze_database_candidate(job_description, db_id):
         del candidate["input_resume"]
         del candidate["conversation_summary"]
         logger.info(f"Record {db_id} processed successfully")
-        return candidate
+        return {"status_code": 200, "response": candidate}
     except Exception as e:
         logger.error(f"Error in analyzing database candidate: {e}")
         return {
@@ -322,7 +322,7 @@ async def process_record(record, job_description):
             return None
         
         notes = ""
-        salesforce_notes = salesforce_users_collection.find_one({"_id": ObjectId(record)}, {"Summary_of_Candidate__c": 1})
+        salesforce_notes = await salesforce_users_collection.find_one({"_id": ObjectId(record_id)}, {"Summary_of_Candidate__c": 1})
         if salesforce_notes:
             notes = salesforce_notes.get("Summary_of_Candidate__c", "")
 

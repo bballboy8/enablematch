@@ -7,3 +7,7 @@ class CandidateAnalysisRequestBody(BaseModel):
 
 class CandidateSuggestionsRequestBody(BaseModel):
     job_description: str
+
+class DBCandidateAnalysisRequestBody(BaseModel):
+    db_user_id: str
+    job_description: str
