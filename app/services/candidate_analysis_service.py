@@ -351,10 +351,12 @@ async def process_record(record, job_description):
         logger.error(f"Error processing record {record_id}: {e}")
         return None
 
+import pandas as pd
+from datetime import datetime
 async def fetch_candidates_for_matching_job_description(job_description):
     try:
         pinecone_client = PineConeDBService()
-        response = await pinecone_client.query_data(job_description, 3)
+        response = await pinecone_client.query_data(job_description, 100)
 
         if response["status_code"] != 200:
             return response
@@ -365,6 +367,15 @@ async def fetch_candidates_for_matching_job_description(job_description):
         results = await asyncio.gather(*tasks)
         # Filter out None results
         query_result = [res for res in results if res]
+
+          # Convert to DataFrame
+        df = pd.DataFrame(query_result)
+
+        # Define file name with timestamp
+        file_name = f"candidate_results_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
+
+        # Save DataFrame to an Excel file
+        df.to_excel(file_name, index=False)
 
         return {"status_code": 200, "response": query_result}
 
