@@ -5,8 +5,11 @@ import json
 from services import proxy_curl_service
 from config.db_connection import db
 from config import constants
+import pandas as pd
 from bson import ObjectId
 from utils.thirdparty.pinecone_service import PineConeDBService
+from datetime import datetime, date
+from utils.thirdparty.openai_service import OpenAIService
 
 
 async def analyze_database_candidate(job_description, db_id):
@@ -326,12 +329,12 @@ async def process_record(record, job_description):
         if salesforce_notes:
             notes = salesforce_notes.get("Summary_of_Candidate__c", "")
 
-        candidate["score"] = record["score"] * 100
+        candidate["exp"] = record["experience_years"]
         input_transcript = candidate.get("conversation_summary", "")
         input_resume = candidate.get("input_resume", "")
         prompt = helper_functions.create_prompt(job_description, input_transcript, input_resume, notes, "linkedin")
         system_prompt = helper_functions.get_system_prompt()
-
+        system_prompt += f"Candidate Actual Experience: {record['experience_years']} years\n"
         response = await asyncio.to_thread(helper_functions.get_gpt_response, prompt, system_prompt)
 
         if response.get("status_code") == 500:
@@ -351,8 +354,100 @@ async def process_record(record, job_description):
         logger.error(f"Error processing record {record_id}: {e}")
         return None
 
-import pandas as pd
-from datetime import datetime
+
+def merge_intervals(intervals):
+    intervals.sort()
+    merged = []
+    
+    for start, end in intervals:
+        if merged and start <= merged[-1][1]:
+            merged[-1] = (merged[-1][0], max(merged[-1][1], end))
+        else:
+            merged.append((start, end))
+    
+    return merged
+
+def calculate_work_experience(experiences):
+    current_date = date.today()
+    intervals = []
+    
+    for exp in experiences:
+        start = exp.get('starts_at')
+        if start is None:
+            continue
+        end = exp.get('ends_at') or {'day': current_date.day, 'month': current_date.month, 'year': current_date.year}
+        
+        start_date = date(start['year'], start['month'], start['day'])
+        end_date = date(end['year'], end['month'], end['day'])
+        
+        intervals.append((start_date, end_date))
+    
+    merged_intervals = merge_intervals(intervals)
+    total_days = sum((end - start).days for start, end in merged_intervals)
+    
+    return total_days / 365
+
+async def fetch_candidates_from_db_for_matching_generating_job_description_score(job_description):
+    try:
+        target_candidates_collection = db[constants.TARGET_CANDIDATE_COLLECTION]
+        salesforce_users_collection = db[constants.SALESFORCE_USERS_COLLECTION]
+        users_linkedin_profile_collection = db[constants.USERS_LINKEDIN_PROFILE_COLLECTION]
+        target_candidates = await target_candidates_collection.find({}).to_list(None)
+
+        openai_client = OpenAIService()
+        response = await openai_client.get_experience_required(job_description)
+        if response["status_code"] != 200:
+            return response
+        experience_required = (response.get("experience_required", "0-4")).split("-")
+        min_experience = int(experience_required[0])
+        max_experience = int(experience_required[1])
+        print(min_experience, max_experience)
+        query_result = []
+        for candidate in target_candidates:
+            try:
+                salesforce_user = await salesforce_users_collection.find_one({"_id": ObjectId(candidate["user_id"])})
+                if not salesforce_user:
+                    continue
+                linkedin_profile = salesforce_user.get("linkedin_profile", "")
+                user_profile = await users_linkedin_profile_collection.find_one({"_id": ObjectId(linkedin_profile)})
+                if not user_profile:
+                    continue
+                experience_years = [ {'starts_at': experience.get("starts_at"), "ends_at": experience.get("ends_at"), "company" : experience.get("company")} for experience in user_profile.get('experiences', [])]
+                experience_years = calculate_work_experience(experience_years)
+                if experience_years < min_experience or experience_years > max_experience:
+                    continue
+
+                query_result.append({
+                    "id": str(salesforce_user["_id"]),
+                    "experience_years": experience_years
+                })
+            except Exception as e:
+                import traceback
+                traceback.print_exc()
+                logger.error(f"Error processing record {candidate['user_id']}: {e}")
+                continue
+
+        query_result = sorted(query_result, key=lambda x: x["experience_years"], reverse=True)
+        print(query_result, len(query_result))
+
+        tasks = [process_record(record, job_description) for record in query_result]
+        results = await asyncio.gather(*tasks)
+        # Filter out None results
+        query_result = [res for res in results if res]
+        # Convert to DataFrame
+        df = pd.DataFrame(query_result)
+        # Define file name with timestamp
+        file_name = f"candidate_results_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
+        # Save DataFrame to an Excel file
+        df.to_excel(file_name, index=False)
+        return {"status_code": 200, "response": query_result}
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        logger.error(f"Failed to query Pinecone index: {e}")
+        return {"status_code": 500, "response": str(e)}
+
+
 async def fetch_candidates_for_matching_job_description(job_description):
     try:
         pinecone_client = PineConeDBService()

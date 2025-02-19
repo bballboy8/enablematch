@@ -110,3 +110,13 @@ async def get_candidate_suggestions(request: CandidateSuggestionsRequestBody,  u
     return JSONResponse(
         content={"response": response}, status_code=response["status_code"]
     )
+
+@router.post("/get-candidate-suggestions-from-db")
+async def get_candidate_suggestions_from_db(request: CandidateSuggestionsRequestBody,  user_id: str = Depends(get_current_user_id)):
+    """Get the candidate suggestions for the user."""
+    logger.info("Get candidate suggestions from db entry point")
+    response = await candidate_analysis_service.fetch_candidates_from_db_for_matching_generating_job_description_score(request.job_description)
+    logger.info("Get candidate suggestions from db exit point")
+    return JSONResponse(
+        content={"response": response}, status_code=response["status_code"]
+    )

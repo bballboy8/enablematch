@@ -107,3 +107,30 @@ class OpenAIService:
                 "message": f"An error occurred while Generating the embeddings via OpenAI API: {e}",
                 "status_code": 500,
             }
+        
+    async def get_experience_required(self, job_description):
+        try:
+            prompt = f"""
+                Extract the required years of experience from the job description.  
+                If a range is explicitly mentioned, return it as is.  
+                If only a minimum or maximum experience is mentioned, infer the missing value based on the job description.  
+                If no experience is specified, estimate a reasonable range based on the role and responsibilities.  
+
+                **Output format:**  
+                Strictly return the result in the format: `min-max` (e.g., `3-5`, `5-10`).  
+
+                **Job Description:**  
+                {job_description}
+                """
+
+            system_prompt = "Extract the minimum and maximum years of experience required from the job description and return it strictly in the 'min-max' format. If a single number is mentioned, assume it as the minimum and infer the maximum based on context."
+            response = await self.get_gpt_response(prompt, system_prompt)
+            if response["status_code"] == 500:
+                return response
+            return {"experience_required": response["response"], "status_code": 200}
+        except Exception as e:
+            logger.error(f"An error occurred while getting the experience required: {e}")
+            return {
+                "message": f"An error occurred while getting the experience required: {e}",
+                "status_code": 500,
+            }
