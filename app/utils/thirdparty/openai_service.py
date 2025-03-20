@@ -107,7 +107,7 @@ class OpenAIService:
                 "message": f"An error occurred while Generating the embeddings via OpenAI API: {e}",
                 "status_code": 500,
             }
-        
+
     async def get_experience_required(self, job_description):
         try:
             prompt = f"""
@@ -132,5 +132,112 @@ class OpenAIService:
             logger.error(f"An error occurred while getting the experience required: {e}")
             return {
                 "message": f"An error occurred while getting the experience required: {e}",
+                "status_code": 500,
+            }
+
+    async def generate_metadata_via_ai(self, text_blob):
+        try:
+            system_prompt = """
+                            You are an advanced AI specializing in extracting structured candidate evaluation attributes from resumes and Gong transcripts. Given unstructured input data, your task is to identify and extract key attributes into a structured JSON format.
+
+                            Input:
+                            Resume: A candidate's resume containing experience, skills, and background information.
+                            Gong Transcripts: Conversations, sales calls, and interviews that reveal the candidate's competencies, communication style, and strategic thinking.
+                            Output Format:
+                            Provide the extracted data in the following JSON structure:
+
+                            {
+                            "compensation_logistics": {
+                                "compensation_range": "<Extracted or inferred from experience/role>",
+                                "location_remote_flexibility": "<Remote/In-office/Hybrid based on location details>",
+                                "role_level": "<Extracted from job titles and seniority>",
+                                "team_management_responsibilities": "<Extracted based on leadership roles>"
+                            },
+                            "industry_market_gtm_motion_fit": {
+                                "industry_domain_experience": "<Extracted industry expertise>",
+                                "gtm_motion_experience": "<Sales motion experience, e.g., B2B, PLG, Direct Sales>",
+                                "sales_segment_experience": "<Market segments such as SMB, Mid-Market, Enterprise>",
+                                "preferred_sales_methodology": "<Extracted sales methodology, e.g., Challenger, MEDDIC>"
+                            },
+                            "strategic_business_impact_attributes": {
+                                "executive_presence_influence": "<1-5 rating based on communication impact>",
+                                "pattern_recognition_foresight": "<1-5 rating based on strategic thinking>",
+                                "prioritization_focus": "<1-5 rating based on decision-making clarity>",
+                                "commercial_acumen_sales_mentality": "<1-5 rating based on revenue-driven mindset>",
+                                "comfort_with_ambiguity_iteration": "<1-5 rating based on adaptability>"
+                            },
+                            "sales_enablement_expertise": {
+                                "sales_rep_empathy_credibility": "<1-5 rating based on rapport with sales teams>",
+                                "challenger_diplomat_balance": "<1-5 rating based on assertiveness vs. diplomacy>",
+                                "psychology_learning_behavior_change": "<1-5 rating based on ability to influence learning>",
+                                "experience_with_revenue_enablement": "<1-5 rating based on sales enablement exposure>",
+                                "experience_sales_ecosystems": "<Extracted experience with AEs, SDRs, CS, etc.>"
+                            },
+                            "leadership_execution_ability": {
+                                "change_management_influence_without_authority": "<1-5 rating based on leadership style>",
+                                "bias_toward_execution": "<1-5 rating based on action-oriented approach>",
+                                "hands_on_delegation_balance": "<1-5 rating based on delegation skills>",
+                                "data_fluency_business_impact": "<1-5 rating based on data-driven decision-making>",
+                                "storytelling_narrative_framing": "<1-5 rating based on communication effectiveness>"
+                            },
+                            "cultural_organizational_fit": {
+                                "company_stage_fit": "<Startup/SMB/Mid-Market/Enterprise based on experience>",
+                                "resilience_ability_handle_resistance": "<1-5 rating based on perseverance>",
+                                "adaptability_speed_learning": "<1-5 rating based on ability to learn quickly>",
+                                "intellectual_curiosity_growth_mindset": "<1-5 rating based on self-driven learning>",
+                                "ownership_mentality_task_execution": "<1-5 rating based on initiative>"
+                            },
+                            "cultural_environmental_factors": {
+                                "political_savvy": "<1-5 rating based on ability to navigate org dynamics>",
+                                "personality_communication_fit": "<Extracted based on communication style>",
+                                "culture_dei_importance": "<1-5 rating based on diversity & inclusion perspective>",
+                                "role_type": "<Expansion/Hunter/Farmer based on sales motion>",
+                                "autonomy_handholding": "<1-5 rating based on independence>"
+                            },
+                            "hidden_differentiators": {
+                                "tailors_approach": "<1-5 rating based on customization skills>",
+                                "quantifies_past_impact": "<1-5 rating based on ability to demonstrate results>",
+                                "reads_room_adapts_pitch": "<1-5 rating based on situational awareness>",
+                                "asks_business_oriented_questions": "<1-5 rating based on depth of inquiry>",
+                                "confident_not_dogmatic": "<1-5 rating based on balanced confidence>"
+                            }
+                            }
+
+
+                            Instructions for Extraction:
+                            Identify Key Data
+
+                            Extract details from job titles, responsibilities, achievements, and industry-specific terminology in the resume.
+                            Analyze Gong transcripts for verbal cues on influence, confidence, adaptability, and expertise.
+                            Infer Numerical Ratings (1-5 Scale)
+
+                            Assign ratings based on context, keywords, and tone in conversations.
+                            Example: A candidate demonstrating strong executive presence in a transcript may get a 5 for "executive_presence_influence."
+                            Handle Missing or Implicit Data
+
+                            If compensation details are not explicit, infer from industry benchmarks and experience level.
+                            If an attribute is not present, return null or provide a best-guess estimate.
+                            Ensure Contextual Accuracy
+
+                            Extract industry, role level, and sales methodology accurately without assuming.
+                            Use multiple data points across resume and transcripts to ensure reliable extraction.
+                            
+                    """
+            prompt = f"""
+                Generate metadata from the given text blob.  
+                The metadata should strictly be based on the system prompt
+                Provide the following data in a Python-compatible dictionary format, ready to be used with json.loads(). Do not include markdown formatting or string escaping in the output.
+                **Text Blob:**  
+                {text_blob}
+                """
+
+            response = await self.get_gpt_response(prompt, system_prompt)
+            if response["status_code"] == 500:
+                return response
+            return {"metadata": response["response"], "status_code": 200}
+        except Exception as e:
+            logger.error(f"An error occurred while generating metadata: {e}")
+            return {
+                "message": f"An error occurred while generating metadata: {e}",
                 "status_code": 500,
             }

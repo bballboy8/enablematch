@@ -120,3 +120,14 @@ async def get_candidate_suggestions_from_db(request: CandidateSuggestionsRequest
     return JSONResponse(
         content={"response": response}, status_code=response["status_code"]
     )
+
+
+@router.get("/generate-metadata-for-candidates")
+async def generate_metadata_for_candidates(number_of_candidates:int, user_id: str = Depends(get_current_user_id)):
+    """Generate metadata for the candidates."""
+    logger.info("Generate metadata for candidates entry point")
+    response = await candidate_analysis_service.generate_metadata_of_candidates(number_of_candidates=1)
+    logger.info("Generate metadata for candidates exit point")
+    return JSONResponse(
+        content={"response": response}, status_code=response["status_code"]
+    )
