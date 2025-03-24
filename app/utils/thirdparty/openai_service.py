@@ -148,9 +148,9 @@ class OpenAIService:
 
                             {
                             "compensation_logistics": {
-                                "compensation_range": "<Extracted or inferred from experience/role>",
-                                "location_remote_flexibility": "<Remote/In-office/Hybrid based on location details>",
-                                "role_level": "<Extracted from job titles and seniority>",
+                                "compensation_range": "<Extracted or inferred from experience/role> Should be a number",
+                                "location_remote_flexibility": "<Remote/In-office/Hybrid based on location details> One word only",
+                                "role_level": "<Extracted from job titles and seniority> One word only",
                                 "team_management_responsibilities": "<Extracted based on leadership roles>"
                             },
                             "industry_market_gtm_motion_fit": {

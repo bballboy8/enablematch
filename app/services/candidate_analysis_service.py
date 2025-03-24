@@ -507,48 +507,56 @@ async def generate_metadata_of_candidates(number_of_candidates: int):
 
         target_candidates = []
         for i, user in enumerate(users):
-            gong_transcript_ids = user.get("gong_transcript_ids", [])
-            conversation_summary = []
-            for transcript_id in gong_transcript_ids:
-                transcript = await users_gong_transcript_collection.find_one(
-                    {"_id": ObjectId(transcript_id)}
+
+            try:
+                gong_transcript_ids = user.get("gong_transcript_ids", [])
+                conversation_summary = []
+                for transcript_id in gong_transcript_ids:
+                    transcript = await users_gong_transcript_collection.find_one(
+                        {"_id": ObjectId(transcript_id)}
+                    )
+                    if not transcript:
+                        continue
+                    conversation_summary.append(transcript.get("transcript", ""))
+                user_profile = await users_linkedin_profile_collection.find_one(
+                    {"_id": ObjectId(user.get("linkedin_profile", ""))}
                 )
-                if not transcript:
+                if not user_profile:
                     continue
-                conversation_summary.append(transcript.get("transcript", ""))
-            user_profile = await users_linkedin_profile_collection.find_one(
-                {"_id": ObjectId(user.get("linkedin_profile", ""))}
-            )
-            if not user_profile:
+
+                experience_years = [ {'starts_at': experience.get("starts_at"), "ends_at": experience.get("ends_at"), "company" : experience.get("company")} for experience in user_profile.get('experiences', [])]
+                
+                experience_years = calculate_work_experience(experience_years)
+                
+                print(experience_years)
+
+                input_resume = await proxy_curl_service.get_key_value_concatenation(
+                    user_profile
+                )
+
+                input_resume = f"Total Experience: {experience_years} years\n{input_resume}"
+
+                text_blob = " ".join(conversation_summary) + input_resume
+
+                response = await openai_client.generate_metadata_via_ai(text_blob)
+                print(response)
+                if response["status_code"] != 200:
+                    continue
+
+                metadata = json.loads(response["metadata"])
+
+                flattened_data = {key: value for subdict in metadata.values() for key, value in subdict.items()}
+
+                target_candidates.append(
+                    {
+                        "user_id": str(user.get("_id", "")),
+                        "metadata": metadata,
+                        "experience_years": experience_years
+                    }
+                )
+            except Exception as e:
+                logger.error(f"Error processing record {user.get('_id', '')}: {e}")
                 continue
-
-            experience_years = [ {'starts_at': experience.get("starts_at"), "ends_at": experience.get("ends_at"), "company" : experience.get("company")} for experience in user_profile.get('experiences', [])]
-            
-            experience_years = calculate_work_experience(experience_years)
-            
-            print(experience_years)
-
-            input_resume = await proxy_curl_service.get_key_value_concatenation(
-                user_profile
-            )
-
-            input_resume = f"Total Experience: {experience_years} years\n{input_resume}"
-
-            text_blob = " ".join(conversation_summary) + input_resume
-
-            response = await openai_client.generate_metadata_via_ai(text_blob)
-            print(response)
-            if response["status_code"] != 200:
-                continue
-
-            metadata = json.loads(response["metadata"])
-            target_candidates.append(
-                {
-                    "user_id": str(user.get("_id", "")),
-                    "metadata": metadata,
-                    "experience_years": experience_years
-                }
-            )
 
         return {
             "response": target_candidates,
