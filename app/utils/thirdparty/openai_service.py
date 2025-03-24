@@ -148,7 +148,7 @@ class OpenAIService:
 
                             {
                             "compensation_logistics": {
-                                "compensation_range": "<Extracted or inferred from experience/role> Should be a number",
+                                "compensation_range": "<Extracted or inferred from experience/role> Should be a number in USD Thousands like 80000 in Integer",
                                 "location_remote_flexibility": "<Remote/In-office/Hybrid based on location details> One word only",
                                 "role_level": "<Extracted from job titles and seniority> One word only",
                                 "team_management_responsibilities": "<Extracted based on leadership roles>"
@@ -218,6 +218,7 @@ class OpenAIService:
                             If compensation details are not explicit, infer from industry benchmarks and experience level.
                             If an attribute is not present, return null or provide a best-guess estimate.
                             Ensure Contextual Accuracy
+                            In case of mutliple values send list of values.
 
                             Extract industry, role level, and sales methodology accurately without assuming.
                             Use multiple data points across resume and transcripts to ensure reliable extraction.

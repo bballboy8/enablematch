@@ -484,6 +484,9 @@ async def generate_metadata_of_candidates(number_of_candidates: int):
         logger.info("Fetching target candidates")
         openai_client = OpenAIService()
         salesforce_users_collection = db[constants.SALESFORCE_USERS_COLLECTION]
+        candidates_ai_generated_metadata_collection = db[constants.CANDIDATES_AI_GENERATED_METADATA_COLLECTION]
+
+
         users_gong_transcript_collection = db[
             constants.USERS_GONG_TRANSCRIPT_COLLECTION
         ]
@@ -507,6 +510,8 @@ async def generate_metadata_of_candidates(number_of_candidates: int):
 
         target_candidates = []
         for i, user in enumerate(users):
+            if await candidates_ai_generated_metadata_collection.find_one({"user_id": str(user.get("_id", ""))}):
+                continue
 
             try:
                 gong_transcript_ids = user.get("gong_transcript_ids", [])
@@ -539,7 +544,6 @@ async def generate_metadata_of_candidates(number_of_candidates: int):
                 text_blob = " ".join(conversation_summary) + input_resume
 
                 response = await openai_client.generate_metadata_via_ai(text_blob)
-                print(response)
                 if response["status_code"] != 200:
                     continue
 
@@ -547,16 +551,30 @@ async def generate_metadata_of_candidates(number_of_candidates: int):
 
                 flattened_data = {key: value for subdict in metadata.values() for key, value in subdict.items()}
 
+                # if the value is string lower it, if contains , split it and lower it if its null skip it
+                for key, value in flattened_data.items():
+                    if value is None:
+                        continue
+                    if isinstance(value, str):
+                        flattened_data[key] = value.lower()
+                    elif isinstance(value, list):
+                        flattened_data[key] = [item.lower() for item in value]
+
                 target_candidates.append(
                     {
                         "user_id": str(user.get("_id", "")),
-                        "metadata": metadata,
-                        "experience_years": experience_years
+                        "experience_years": experience_years,
+                        **flattened_data
                     }
                 )
             except Exception as e:
                 logger.error(f"Error processing record {user.get('_id', '')}: {e}")
                 continue
+
+        # store candidates in bulk in a batch of 100
+        target_candidates = [target_candidates[i:i + 100] for i in range(0, len(target_candidates), 10)]
+        for target_candidates_batch in target_candidates:
+            await candidates_ai_generated_metadata_collection.insert_many(target_candidates_batch)        
 
         return {
             "response": target_candidates,
