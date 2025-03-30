@@ -643,7 +643,7 @@ async def get_the_top_candidate_for_jd(job_description: str):
         logger.info("Fetching target candidates")
         openai_client = OpenAIService()
         users = db["candidates_blob"].find({})
-        users = await users.to_list(length=10)
+        users = await users.to_list(length=None)
 
         if not users:
             return {"status_code": 200, "response": None}
