@@ -417,3 +417,65 @@ async def generate_skills_and_strength_of_candidate(conversation_transcript):
             "response": f"An error occurred while processing the request: {e}",
             "status_code": 500,
         }
+
+
+def create_comparing_prompt(
+    job_description, candidate_1_blob, candidate_2_blob, candidate_1_id, candidate_2_id
+):
+    """Create a detailed GPT prompt using the job description, conversation transcript, and resume text."""
+
+    prompt = f"""
+            
+            Candidate 1 ID: {candidate_1_id}
+            Candidate 2 ID: {candidate_2_id}
+            
+            Job Description:
+            {job_description}
+
+            Evaluation criteria:
+            location_flexibility
+            role_level
+            team_management_responsibilities
+            industry_domain_experience
+            gtm_motion_experience
+            sales_segment_experience
+            preferred_sales_methodology
+            executive_presence_influence
+            pattern_recognition_foresight
+            prioritization_focus
+            commercial_acumen_sales_mentality
+            comfort_with_ambiguity_iteration
+            sales_rep_empathy_credibility
+            challenger_diplomat_balance
+            psychology_learning_behavior_change
+            experience_with_revenue_enablement
+            experience_sales_enablement_ecosystems
+            change_management_influence_without_authority
+            bias_toward_execution
+            hands_on_delegation_balance
+            data_fluency_business_impact
+            storytelling_narrative_framing
+            company_stage_fit
+            resilience_ability_handle_resistance
+            adaptability_speed_learning
+            intellectual_curiosity_growth_mindset
+            ownership_mentality_task_execution
+            political_savvy
+            personality_communication_fit
+            culture_dei_importance
+            role_type
+            autonomy_handholding
+            tailors_approach
+            quantifies_past_impact
+            reads_room_adapts_pitch
+            asks_business_oriented_questions
+            confident_not_dogmatic
+            """
+
+    prompt += f"\n\nCandidate 1 Content:\n{candidate_1_blob}"
+
+    prompt += f"\n\nCandidate 2 Content:\n{candidate_2_blob}"
+
+    prompt += "The response will be an id of the candidate who is more suitable for the role based on the job description and the evaluation criteria"
+
+    return prompt

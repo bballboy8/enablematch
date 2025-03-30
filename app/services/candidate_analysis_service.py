@@ -560,24 +560,29 @@ async def generate_metadata_of_candidates(number_of_candidates: int):
                     elif isinstance(value, list):
                         flattened_data[key] = [item.lower() for item in value]
 
-                target_candidates.append(
-                    {
+                data = {
                         "user_id": str(user.get("_id", "")),
                         "experience_years": experience_years,
                         **flattened_data
                     }
+                
+                print(data)
+
+                target_candidates.append(
+                    data
                 )
+
             except Exception as e:
                 logger.error(f"Error processing record {user.get('_id', '')}: {e}")
                 continue
 
         # store candidates in bulk in a batch of 100
-        target_candidates = [target_candidates[i:i + 100] for i in range(0, len(target_candidates), 10)]
-        for target_candidates_batch in target_candidates:
+        candidates = [target_candidates[i:i + 10] for i in range(0, len(target_candidates), 10)]
+        for target_candidates_batch in candidates:
             await candidates_ai_generated_metadata_collection.insert_many(target_candidates_batch)        
 
         return {
-            "response": target_candidates,
+            "response": f"Metadata generated for {len(target_candidates)} candidates.",
             "status_code": 200,
         }
     except Exception as e:
@@ -586,3 +591,114 @@ async def generate_metadata_of_candidates(number_of_candidates: int):
             "response": f"An error occurred while fetching target candidates: {e}",
             "status_code": 500,
         }
+    
+async def get_candidates_data(user):
+    try:
+        users_gong_transcript_collection = db[constants.USERS_GONG_TRANSCRIPT_COLLECTION]
+        users_linkedin_profile_collection = db[constants.USERS_LINKEDIN_PROFILE_COLLECTION]
+
+        gong_transcript_ids = user.get("gong_transcript_ids", [])
+        transcript_data = []
+        for transcript_id in gong_transcript_ids:
+            transcript = await users_gong_transcript_collection.find_one(
+                {"_id": ObjectId(transcript_id)}
+            )
+            if not transcript:
+                continue
+            transcript_data.append(transcript.get("transcript", ""))
+        user_profile = await users_linkedin_profile_collection.find_one(
+            {"_id": ObjectId(user.get("linkedin_profile", ""))}
+        )
+        if not user_profile:
+            return {
+                "status_code": 404
+            }
+        input_resume = await proxy_curl_service.get_key_value_concatenation(
+            user_profile
+        )
+
+        text_blob = f"Resume: {input_resume}\n\n"
+
+        for i, transcript in enumerate(transcript_data):
+            text_blob += f"Interveiw {i+1}: {transcript}\n\n"
+
+        return {
+            "status_code": 200,
+            "user_id": str(user.get("_id", "")),
+            "blob": text_blob,
+        }
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return {
+            "status_code": 500,
+            "response": str(e),
+        }
+    
+async def get_the_top_candidate_for_jd(job_description: str):
+    try:
+        logger.info("Fetching target candidates")
+        openai_client = OpenAIService()
+        users = db["candidates_blob"].find({})
+        users = await users.to_list(length=50)
+
+        if not users:
+            return {"status_code": 200, "response": None}
+
+        while len(users) > 1:
+            next_round = []
+            all_pairs = []
+
+            for i in range(0, len(users), 2):
+                if i + 1 < len(users):
+                    all_pairs.append((users[i], users[i + 1]))
+                else:
+                    next_round.append(users[i])
+
+            logger.info(f"Total pairs found: {len(all_pairs)}")
+
+            for pair in all_pairs:
+                candidate1 = pair[0]
+                candidate2 = pair[1]
+                prompt = helper_functions.create_comparing_prompt(job_description, candidate1["blob"], candidate2["blob"], candidate1["user_id"], candidate2["user_id"])
+                system_prompt = (
+                    "You are an expert recruiter specializing in comparing and analyzing conversations "
+                    "between candidates and hiring managers to find the best fit candidate. You have "
+                    "additional deep expertise in sales enablement which provides guidance on more subtle "
+                    "points of candidate fit. Your goal is to find the best fit candidate based on the "
+                    "provided resume and conversation with the hiring manager and return the candidate ID "
+                    "in response. Only respond with the candidate ID. Do not add any other text in the response."
+                )
+                
+                openai_response = await openai_client.get_gpt_response(prompt, system_prompt)
+                if openai_response["status_code"] != 200:
+                    continue
+                print(openai_response["response"])
+                winner_id = openai_response["response"]
+                winner = next(c for c in pair if c["user_id"] == winner_id)
+                next_round.append(winner)
+            
+            users = next_round
+
+        final_winner = users[0] if users else None
+
+        qualities = ""
+        # Generate metadata for the final winner
+        if final_winner:
+            metadata_response = await get_candidates_data(final_winner)
+            if metadata_response["status_code"] != 200:
+                return metadata_response
+            
+            metadata = metadata_response["blob"]
+
+            system_prompt = "You are an expert recruiter specializing in analyzing candidates. You will be given a blob of text containing the resume and conversation with the hiring manager. Your is to response with why the chosen candidate is the best fit among rest of the candidates."
+            openai_response = await openai_client.get_gpt_response(metadata, system_prompt)
+            if openai_response["status_code"] != 200:
+                return openai_response
+            qualities = openai_response["response"]
+
+        return {"status_code": 200, "response": final_winner["user_id"] if final_winner else None, "qualities": qualities}
+
+    except Exception as e:
+        logger.error(f"Failed to process candidates: {e}")
+        return {"status_code": 500, "response": str(e)}

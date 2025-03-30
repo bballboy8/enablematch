@@ -218,7 +218,7 @@ class OpenAIService:
                             If compensation details are not explicit, infer from industry benchmarks and experience level.
                             If an attribute is not present, return null or provide a best-guess estimate.
                             Ensure Contextual Accuracy
-                            In case of mutliple values send list of values.
+                            In case of mutliple values send string of comma separted values.
 
                             Extract industry, role level, and sales methodology accurately without assuming.
                             Use multiple data points across resume and transcripts to ensure reliable extraction.
