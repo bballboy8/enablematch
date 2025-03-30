@@ -594,6 +594,9 @@ async def generate_metadata_of_candidates(number_of_candidates: int):
     
 async def get_candidates_data(user):
     try:
+        logger.info(f"Fetching candidate data for user {user}")
+        if isinstance(user, str):
+            user = await db[constants.SALESFORCE_USERS_COLLECTION].find_one({"_id": ObjectId(user)})
         users_gong_transcript_collection = db[constants.USERS_GONG_TRANSCRIPT_COLLECTION]
         users_linkedin_profile_collection = db[constants.USERS_LINKEDIN_PROFILE_COLLECTION]
 
@@ -640,7 +643,7 @@ async def get_the_top_candidate_for_jd(job_description: str):
         logger.info("Fetching target candidates")
         openai_client = OpenAIService()
         users = db["candidates_blob"].find({})
-        users = await users.to_list(length=50)
+        users = await users.to_list(length=10)
 
         if not users:
             return {"status_code": 200, "response": None}
@@ -685,7 +688,7 @@ async def get_the_top_candidate_for_jd(job_description: str):
         qualities = ""
         # Generate metadata for the final winner
         if final_winner:
-            metadata_response = await get_candidates_data(final_winner)
+            metadata_response = await get_candidates_data(final_winner["user_id"])
             if metadata_response["status_code"] != 200:
                 return metadata_response
             
