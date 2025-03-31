@@ -10,6 +10,7 @@ from bson import ObjectId
 from utils.thirdparty.pinecone_service import PineConeDBService
 from datetime import datetime, date
 from utils.thirdparty.openai_service import OpenAIService
+import time
 
 
 async def analyze_database_candidate(job_description, db_id):
@@ -43,9 +44,13 @@ async def analyze_database_candidate(job_description, db_id):
         # Delete input_resume and conversation_summary
         del candidate["input_resume"]
         del candidate["conversation_summary"]
+        del candidate["created_at"]
         logger.info(f"Record {db_id} processed successfully")
+        print(candidate)
         return {"status_code": 200, "response": candidate}
     except Exception as e:
+        import traceback
+        traceback.print_exc()
         logger.error(f"Error in analyzing database candidate: {e}")
         return {
             "response": f"An error occurred while analyzing the database candidate: {e}",
@@ -643,7 +648,7 @@ async def get_the_top_candidate_for_jd(job_description: str):
         logger.info("Fetching target candidates")
         openai_client = OpenAIService()
         users = db["candidates_blob"].find({})
-        users = await users.to_list(length=None)
+        users = await users.to_list(length=50)
 
         if not users:
             return {"status_code": 200, "response": None}
@@ -676,6 +681,7 @@ async def get_the_top_candidate_for_jd(job_description: str):
                 openai_response = await openai_client.get_gpt_response(prompt, system_prompt)
                 if openai_response["status_code"] != 200:
                     continue
+                time.sleep(1)
                 print(openai_response["response"])
                 winner_id = openai_response["response"]
                 winner = next(c for c in pair if c["user_id"] == winner_id)
@@ -703,5 +709,7 @@ async def get_the_top_candidate_for_jd(job_description: str):
         return {"status_code": 200, "response": final_winner["user_id"] if final_winner else None, "qualities": qualities}
 
     except Exception as e:
+        import traceback
+        traceback.print_exc()
         logger.error(f"Failed to process candidates: {e}")
         return {"status_code": 500, "response": str(e)}
