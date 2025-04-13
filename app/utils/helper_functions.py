@@ -420,62 +420,133 @@ async def generate_skills_and_strength_of_candidate(conversation_transcript):
 
 
 def create_comparing_prompt(
-    job_description, candidate_1_blob, candidate_2_blob, candidate_1_id, candidate_2_id
+    job_description, candidate_1_blob, candidate_2_blob, candidate_1_id, candidate_2_id, candidate_1_ote, candidate_2_ote
 ):
     """Create a detailed GPT prompt using the job description, conversation transcript, and resume text."""
 
     prompt = f"""
-            
-            Candidate 1 ID: {candidate_1_id}
-            Candidate 2 ID: {candidate_2_id}
-            
-            Job Description:
-            {job_description}
+    Candidate 1 ID: {candidate_1_id}
+    Candidate 2 ID: {candidate_2_id}
 
-            Evaluation criteria:
-            location_flexibility
-            role_level
-            team_management_responsibilities
-            industry_domain_experience
-            gtm_motion_experience
-            sales_segment_experience
-            preferred_sales_methodology
-            executive_presence_influence
-            pattern_recognition_foresight
-            prioritization_focus
-            commercial_acumen_sales_mentality
-            comfort_with_ambiguity_iteration
-            sales_rep_empathy_credibility
-            challenger_diplomat_balance
-            psychology_learning_behavior_change
-            experience_with_revenue_enablement
-            experience_sales_enablement_ecosystems
-            change_management_influence_without_authority
-            bias_toward_execution
-            hands_on_delegation_balance
-            data_fluency_business_impact
-            storytelling_narrative_framing
-            company_stage_fit
-            resilience_ability_handle_resistance
-            adaptability_speed_learning
-            intellectual_curiosity_growth_mindset
-            ownership_mentality_task_execution
-            political_savvy
-            personality_communication_fit
-            culture_dei_importance
-            role_type
-            autonomy_handholding
-            tailors_approach
-            quantifies_past_impact
-            reads_room_adapts_pitch
-            asks_business_oriented_questions
-            confident_not_dogmatic
-            """
+    Candidate 1 Compensation: {candidate_1_ote}
+    Candidate 2 Compensation: {candidate_2_ote}
 
-    prompt += f"\n\nCandidate 1 Content:\n{candidate_1_blob}"
+    If any or both of the candidate compensation is not mentioned, then based on the candidate blob content, you need to mention the compensation of the candidate.
 
-    prompt += f"\n\nCandidate 2 Content:\n{candidate_2_blob}"
+    ---
 
-    prompt += "The response will be an id of the candidate who is more suitable for the role based on the job description and the evaluation criteria"
+    ### Job Description:
+    {job_description}
+
+    ---
+
+    ### Evaluation Criteria and Metadata Required
+
+    Output Candidate Metadata Format:
+    Provide the extracted data in the following JSON structure:
+
+    {{
+    "compensation_logistics": {{
+        "compensation_range": "<Extracted or inferred from experience/role> Should be a number in USD Thousands like 80000 in Integer",
+        "location_remote_flexibility": "<Remote/In-office/Hybrid based on location details> One word only",
+        "role_level": "<Mapped role level: VP, Senior director, Director (or 'Head of'), Senior manager, Manager, Everything else>",
+        "team_management_responsibilities": "<Extracted based on leadership roles>"
+    }},
+    "industry_market_gtm_motion_fit": {{
+        "industry_domain_experience": "<Extracted industry expertise>",
+        "gtm_motion_experience": "<Sales motion experience, e.g., B2B, PLG, Direct Sales>",
+        "sales_segment_experience": "<Market segments such as SMB, Mid-Market, Enterprise>",
+        "preferred_sales_methodology": "<Extracted sales methodology, e.g., Challenger, MEDDIC>"
+    }},
+    "strategic_business_impact_attributes": {{
+        "executive_presence_influence": "<1-5 rating based on communication impact>",
+        "pattern_recognition_foresight": "<1-5 rating based on strategic thinking>",
+        "prioritization_focus": "<1-5 rating based on decision-making clarity>",
+        "commercial_acumen_sales_mentality": "<1-5 rating based on revenue-driven mindset>",
+        "comfort_with_ambiguity_iteration": "<1-5 rating based on adaptability>"
+    }},
+    "sales_enablement_expertise": {{
+        "sales_rep_empathy_credibility": "<1-5 rating based on rapport with sales teams>",
+        "challenger_diplomat_balance": "<1-5 rating based on assertiveness vs. diplomacy>",
+        "psychology_learning_behavior_change": "<1-5 rating based on ability to influence learning>",
+        "experience_with_revenue_enablement": "<1-5 rating based on sales enablement exposure>",
+        "experience_sales_ecosystems": "<Extracted experience with AEs, SDRs, CS, etc.>"
+    }},
+    "leadership_execution_ability": {{
+        "change_management_influence_without_authority": "<1-5 rating based on leadership style>",
+        "bias_toward_execution": "<1-5 rating based on action-oriented approach>",
+        "hands_on_delegation_balance": "<1-5 rating based on delegation skills>",
+        "data_fluency_business_impact": "<1-5 rating based on data-driven decision-making>",
+        "storytelling_narrative_framing": "<1-5 rating based on communication effectiveness>"
+    }},
+    "cultural_organizational_fit": {{
+        "company_stage_fit": "<Startup/SMB/Mid-Market/Enterprise based on experience>",
+        "resilience_ability_handle_resistance": "<1-5 rating based on perseverance>",
+        "adaptability_speed_learning": "<1-5 rating based on ability to learn quickly>",
+        "intellectual_curiosity_growth_mindset": "<1-5 rating based on self-driven learning>",
+        "ownership_mentality_task_execution": "<1-5 rating based on initiative>"
+    }},
+    "cultural_environmental_factors": {{
+        "political_savvy": "<1-5 rating based on ability to navigate org dynamics>",
+        "personality_communication_fit": "<Extracted based on communication style>",
+        "culture_dei_importance": "<1-5 rating based on diversity & inclusion perspective>",
+        "role_type": "<Expansion/Hunter/Farmer based on sales motion>",
+        "autonomy_handholding": "<1-5 rating based on independence>"
+    }},
+    "hidden_differentiators": {{
+        "tailors_approach": "<1-5 rating based on customization skills>",
+        "quantifies_past_impact": "<1-5 rating based on ability to demonstrate results>",
+        "reads_room_adapts_pitch": "<1-5 rating based on situational awareness>",
+        "asks_business_oriented_questions": "<1-5 rating based on depth of inquiry>",
+        "confident_not_dogmatic": "<1-5 rating based on balanced confidence>"
+    }}
+    }}
+
+    ---
+
+    ### Instructions for Extraction:
+
+    - **Identify Key Data:**  
+    Extract details from job titles, responsibilities, achievements, and industry-specific terminology in the resume.  
+    Analyze Gong transcripts for verbal cues on influence, confidence, adaptability, and expertise.
+
+    - **Infer Numerical Ratings (1-5 Scale):**  
+    Assign ratings based on context, keywords, and tone in conversations.  
+    Example: A candidate demonstrating strong executive presence in a transcript may get a 5 for `"executive_presence_influence"`.
+
+    - **Handle Missing or Implicit Data:**  
+    If an attribute is not present, return `null` or provide a best-guess estimate.
+
+    - **Ensure Contextual Accuracy:**  
+    Extract industry, role level, and sales methodology accurately without assuming.  
+    Use multiple data points across resume and transcripts to ensure reliable extraction.  
+    In case of multiple values, return a comma-separated string.
+
+    - Role Level Mapping:  
+    All role levels must be mapped to one of the following categories: VP, Senior director, Director (or "Head of" roles), Senior manager, Manager, Everything else.
+
+
+    ---
+
+    ### Candidate 1 Content:
+    {candidate_1_blob}
+
+    ---
+
+    ### Candidate 2 Content:
+    {candidate_2_blob}
+
+    ---
+
+    ### Response Format:
+    Return:
+    - `candidate_1_metadata` (in the JSON structure above)
+    - `candidate_2_metadata` (in the JSON structure above)
+    - `selected_candidate_id`: The ID of the candidate who is more suitable for the role based on the job description and evaluation criteria.
+    ---
+    
+    Important formatting instruction:
+        Return only the JSON object with no extra text, explanation, or markdown formatting like triple backticks. Do not wrap the response in ```json or any other delimiters. Only return raw, parseable JSON.
+    """
 
     return prompt

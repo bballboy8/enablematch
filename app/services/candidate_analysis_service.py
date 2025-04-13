@@ -647,8 +647,8 @@ async def get_the_top_candidate_for_jd(job_description: str):
     try:
         logger.info("Fetching target candidates")
         openai_client = OpenAIService()
-        users = db["candidates_blob"].find({})
-        users = await users.to_list(length=50)
+        users = db[constants.CANDIDATES_BLOB_COLLECTION].find({})
+        users = await users.to_list(length=2)
 
         if not users:
             return {"status_code": 200, "response": None}
@@ -668,22 +668,31 @@ async def get_the_top_candidate_for_jd(job_description: str):
             for pair in all_pairs:
                 candidate1 = pair[0]
                 candidate2 = pair[1]
-                prompt = helper_functions.create_comparing_prompt(job_description, candidate1["blob"], candidate2["blob"], candidate1["user_id"], candidate2["user_id"])
-                system_prompt = (
-                    "You are an expert recruiter specializing in comparing and analyzing conversations "
-                    "between candidates and hiring managers to find the best fit candidate. You have "
-                    "additional deep expertise in sales enablement which provides guidance on more subtle "
-                    "points of candidate fit. Your goal is to find the best fit candidate based on the "
-                    "provided resume and conversation with the hiring manager and return the candidate ID "
-                    "in response. Only respond with the candidate ID. Do not add any other text in the response."
-                )
+                prompt = helper_functions.create_comparing_prompt(job_description, candidate1["blob"], candidate2["blob"], candidate1["user_id"], candidate2["user_id"], candidate_1_ote=candidate1["current_ote"], candidate_2_ote=candidate2["current_ote"])
+
+                system_prompt = f"""
+                            You are an expert evaluator helping compare two candidates for a role, using their resumes and conversation transcripts. Your task is to extract structured metadata from the provided information, and identify which candidate is more suitable based on the job description and the evaluation criteria.
+                            Be meticulous, objective, and data-driven in your analysis. Do not assume information not present in the candidate blobs.
+                            Output the result as follows:
+                            - `candidate_1_metadata`: JSON object matching the specified schema
+                            - `candidate_2_metadata`: JSON object matching the specified schema
+                            - `more_suitable_candidate_id`: the ID of the more suitable candidate
+
+                             Important formatting instruction:
+                            Return only the JSON object with no extra text, explanation, or markdown formatting like triple backticks. Do not wrap the response in ```json or any other delimiters. Only return raw, parseable JSON.
+
+                            """
                 
                 openai_response = await openai_client.get_gpt_response(prompt, system_prompt)
                 if openai_response["status_code"] != 200:
                     continue
                 time.sleep(1)
                 print(openai_response["response"])
-                winner_id = openai_response["response"]
+                data = json.loads(openai_response["response"])
+                winner_id = data["more_suitable_candidate_id"]
+                candidate_1_metadata = data["candidate_1_metadata"]
+                candidate_2_metadata = data["candidate_2_metadata"]
+                print(candidate_1_metadata, candidate_2_metadata, winner_id)
                 winner = next(c for c in pair if c["user_id"] == winner_id)
                 next_round.append(winner)
             
