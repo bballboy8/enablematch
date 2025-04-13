@@ -3,6 +3,7 @@ from logging_module import logger
 from config.db_connection import db
 from config import constants
 import time
+from bson import ObjectId
 
 async def get_salesforce_data(query):
     """Get data from Salesforce."""
@@ -373,3 +374,34 @@ async def convert_tinyurl_to_linkedin():
     except Exception as e:
         logger.error(f"Error: {e}")
         return {"response": f"Error: {e}", "status_code": 500}
+    
+
+async def add_current_ote_in_candidate_blob():
+    """Add current OTE in candidate blob."""
+    try:
+        candidates_blob_collection = db[constants.CANDIDATES_BLOB_COLLECTION]
+        salesforce_users_collection = db[constants.SALESFORCE_USERS_COLLECTION]
+
+        candidates_blobs = await candidates_blob_collection.find().to_list(length=None)
+
+        print(len(candidates_blobs), "candidates blobs to be processed")
+
+        for candidate_blob in candidates_blobs:
+            salesforce_user = await salesforce_users_collection.find_one(
+                {"_id": ObjectId(candidate_blob["user_id"])}
+            )
+            if salesforce_user:
+                current_ote = salesforce_user.get("Current_OTE__c")
+                await candidates_blob_collection.update_one(
+                    {"_id": candidate_blob["_id"]},
+                    {"$set": {"current_ote": current_ote}}
+                )
+                logger.info(f"Updated current OTE for candidate blob {candidate_blob['_id']}")
+
+        return {"response": "Current OTE updated successfully", "status_code": 200}
+    except Exception as e:
+        logger.error(f"Error while adding current OTE in candidate blob: {e}")
+        return {
+            "response": f"An error occurred while adding current OTE in candidate blob: {e}",
+            "status_code": 500,
+        }

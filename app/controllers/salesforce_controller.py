@@ -232,3 +232,17 @@ async def convert_tinyurl_to_linkedin(background_task: BackgroundTasks, user_id:
     background_task.add_task(salesforce_service.convert_tinyurl_to_linkedin)
     logger.info("Convert TinyURL to LinkedIn exit point")
     return JSONResponse(content="Recieved", status_code=200)
+
+
+@router.put("/add-current-ote-to-candidates-blob")
+async def add_current_ote_to_candidates_blob(background_task: BackgroundTasks, user_id: str = Depends(get_current_user_id)):
+    """
+    Endpoint to add the current OTE to the candidates blob.
+    
+    Returns:
+    - Success message.
+    """
+    logger.info("Add Current OTE to Candidates Blob entry point")
+    background_task.add_task(salesforce_service.add_current_ote_in_candidate_blob)
+    logger.info("Add Current OTE to Candidates Blob exit point")
+    return JSONResponse(content="Recieved", status_code=200)

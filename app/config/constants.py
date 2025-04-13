@@ -15,6 +15,7 @@ SALESFORCE_USERS_COLLECTION = "salesforce_users"
 USERS_GONG_TRANSCRIPT_COLLECTION = "users_gong_transcript"
 TARGET_CANDIDATE_COLLECTION = "target_candidates"
 CANDIDATES_AI_GENERATED_METADATA_COLLECTION = "candidates_ai_generated_metadata"
+CANDIDATES_BLOB_COLLECTION = "candidates_blob"
 
 # keys
 USER_ID_FIELD = "user_id"
