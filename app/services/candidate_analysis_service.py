@@ -11,7 +11,8 @@ from utils.thirdparty.pinecone_service import PineConeDBService
 from datetime import datetime, date
 from utils.thirdparty.openai_service import OpenAIService
 import time
-
+import pandas as pd
+from datetime import datetime
 
 async def analyze_database_candidate(job_description, db_id):
     try:
@@ -648,14 +649,16 @@ async def get_the_top_candidate_for_jd(job_description: str):
         logger.info("Fetching target candidates")
         openai_client = OpenAIService()
         users = db[constants.CANDIDATES_BLOB_COLLECTION].find({})
-        users = await users.to_list(length=2)
+        users = await users.to_list(length=10)
 
         if not users:
             return {"status_code": 200, "response": None}
 
+        round_number = 1
         while len(users) > 1:
             next_round = []
             all_pairs = []
+            round_metadata = []
 
             for i in range(0, len(users), 2):
                 if i + 1 < len(users):
@@ -677,12 +680,10 @@ async def get_the_top_candidate_for_jd(job_description: str):
                             - `candidate_1_metadata`: JSON object matching the specified schema
                             - `candidate_2_metadata`: JSON object matching the specified schema
                             - `more_suitable_candidate_id`: the ID of the more suitable candidate
-
                              Important formatting instruction:
                             Return only the JSON object with no extra text, explanation, or markdown formatting like triple backticks. Do not wrap the response in ```json or any other delimiters. Only return raw, parseable JSON.
-
                             """
-                
+
                 openai_response = await openai_client.get_gpt_response(prompt, system_prompt)
                 if openai_response["status_code"] != 200:
                     continue
@@ -692,11 +693,26 @@ async def get_the_top_candidate_for_jd(job_description: str):
                 winner_id = data["more_suitable_candidate_id"]
                 candidate_1_metadata = data["candidate_1_metadata"]
                 candidate_2_metadata = data["candidate_2_metadata"]
-                print(candidate_1_metadata, candidate_2_metadata, winner_id)
+
+                round_metadata.append({
+                    'round': round_number,
+                    'candidate_1_id': candidate1["user_id"],
+                    'candidate_2_id': candidate2["user_id"],
+                    'candidate_1_metadata': candidate_1_metadata,
+                    'candidate_2_metadata': candidate_2_metadata,
+                    'winner_id': winner_id,
+                })
+
                 winner = next(c for c in pair if c["user_id"] == winner_id)
                 next_round.append(winner)
-            
+
+            # Write the metadata for this round to an Excel file
+            round_df = pd.DataFrame(round_metadata)
+            round_filename = f"round_{round_number}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
+            round_df.to_excel(round_filename, index=False)
+
             users = next_round
+            round_number += 1
 
         final_winner = users[0] if users else None
 
