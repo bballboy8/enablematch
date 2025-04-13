@@ -177,6 +177,8 @@ async def get_salesforce_users():
 
         # Extract Salesforce user IDs from the fetched users
         fetched_user_ids = {user['Id'] for user in users}
+
+        print(len(users), "Fetched users")
         
         # Find existing user IDs in the database
         existing_users = await salesforce_users_collection.find(
@@ -204,6 +206,37 @@ async def get_salesforce_users():
             "response": f"An error occurred while fetching the Salesforce users: {e}",
             "status_code": 500,
         }
+    
+
+
+async def assign_current_ote_from_salesforce_to_db_salesforce_user():
+    """Assign current OTE from Salesforce to DB Salesforce user."""
+    try:
+        salesforce_users_collection = db[constants.SALESFORCE_USERS_COLLECTION]
+        salesforce_instance = SalesforceApiService()
+        
+        users = salesforce_instance.get_salesforce_users()
+        users = users['users']
+
+        for user in users:
+            try:
+                await salesforce_users_collection.update_one(
+                    {"Id": user["Id"]},
+                    {"$set": {"Current_OTE__c": user["Current_OTE__c"]}}
+                )
+                logger.info(f"Updated current OTE for {user['Id']}")
+            except Exception as e:
+                logger.error(f"Error while updating current OTE for {user['Id']}: {e}")
+                continue
+
+        return {"response": "Current OTE updated successfully", "status_code": 200}
+    except Exception as e:
+        logger.error(f"Error while assigning current OTE from Salesforce to DB: {e}")
+        return {
+            "response": f"An error occurred while assigning current OTE from Salesforce to DB: {e}",
+            "status_code": 500,
+        }
+    
 
 
 async def fetch_gong_record_by_email(email:str):

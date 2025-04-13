@@ -150,6 +150,20 @@ async def get_salesforce_users(user_id: str = Depends(get_current_user_id)):
     return JSONResponse(content=response, status_code=response["status_code"])
 
 
+@router.put("/assign-current-ote-user-to-salesforce-users")
+async def assign_current_ote_from_salesforce_to_db_salesforce_user(user_id: str = Depends(get_current_user_id)):
+    """
+    Endpoint to assign the current user to other Salesforce users.
+    
+    Returns:
+    - Success message.
+    """
+    logger.info("Assign Current OTE User to Salesforce Users entry point")
+    response = await salesforce_service.assign_current_ote_from_salesforce_to_db_salesforce_user()
+    logger.info("Assign Current OTE User to Salesforce Users exit point")
+    return JSONResponse(content=response, status_code=response["status_code"])
+
+
 @router.get("/fetch-gong-conversation-ids-by-email")
 async def fetch_gong_conversation_ids_by_email(email:str, user_id: str = Depends(get_current_user_id)):
     """
