@@ -13,6 +13,7 @@ from utils.thirdparty.openai_service import OpenAIService
 import time
 import pandas as pd
 from datetime import datetime
+import random
 
 async def analyze_database_candidate(job_description, db_id):
     try:
@@ -643,7 +644,20 @@ async def get_candidates_data(user):
             "status_code": 500,
             "response": str(e),
         }
-    
+
+
+
+async def flatten_dict(d, parent_key='', sep='_'):
+    items = []
+    for k, v in d.items():
+        new_key = f"{parent_key}{sep}{k}" if parent_key else k
+        if isinstance(v, dict):
+            response = await flatten_dict(v, new_key, sep=sep)
+            items.extend(response.items())  # Recurse into nested dictionary
+        else:
+            items.append((new_key, v))  # Base case: add key-value pair
+    return dict(items)
+
 async def get_the_top_candidate_for_jd(job_description: str):
     try:
         logger.info("Fetching target candidates")
@@ -653,6 +667,8 @@ async def get_the_top_candidate_for_jd(job_description: str):
 
         if not users:
             return {"status_code": 200, "response": None}
+        
+        random.shuffle(users)
 
         round_number = 1
         while len(users) > 1:
@@ -668,7 +684,7 @@ async def get_the_top_candidate_for_jd(job_description: str):
 
             logger.info(f"Total pairs found: {len(all_pairs)}")
 
-            for pair in all_pairs:
+            for i, pair in enumerate(all_pairs):
                 candidate1 = pair[0]
                 candidate2 = pair[1]
                 prompt = helper_functions.create_comparing_prompt(job_description, candidate1["blob"], candidate2["blob"], candidate1["user_id"], candidate2["user_id"], candidate_1_ote=candidate1["current_ote"], candidate_2_ote=candidate2["current_ote"])
@@ -694,14 +710,27 @@ async def get_the_top_candidate_for_jd(job_description: str):
                 candidate_1_metadata = data["candidate_1_metadata"]
                 candidate_2_metadata = data["candidate_2_metadata"]
 
+                candidate_1_metadata = await flatten_dict(candidate_1_metadata)
+                candidate_2_metadata = await flatten_dict(candidate_2_metadata)
+
                 round_metadata.append({
                     'round': round_number,
-                    'candidate_1_id': candidate1["user_id"],
-                    'candidate_2_id': candidate2["user_id"],
-                    'candidate_1_metadata': candidate_1_metadata,
-                    'candidate_2_metadata': candidate_2_metadata,
+                    "pair": i + 1,
+                    "salesforce_user_id": candidate1["salesforce_id"],
+                    'candidate_id': candidate1["user_id"],
                     'winner_id': winner_id,
+                    **candidate_1_metadata,
                 })
+
+                round_metadata.append({
+                    'round': round_number,
+                    "pair": i + 1,
+                    "salesforce_user_id": candidate2["salesforce_id"],
+                    'candidate_id': candidate2["user_id"],
+                    'winner_id': winner_id,
+                    **candidate_2_metadata,
+                })
+
 
                 winner = next(c for c in pair if c["user_id"] == winner_id)
                 next_round.append(winner)
