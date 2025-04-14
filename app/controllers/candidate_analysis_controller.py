@@ -134,11 +134,11 @@ async def generate_metadata_for_candidates(number_of_candidates:int, user_id: st
 
 
 @router.get("/get-best-candidate")
-async def get_best_candidate(job_description: str, user_id: str = Depends(get_current_user_id)):
+async def get_best_candidate(job_description: str,background_task:BackgroundTasks,  user_id: str = Depends(get_current_user_id)):
     """Get the best candidate for the job description."""
     logger.info("Get best candidate entry point")
-    response = await candidate_analysis_service.get_the_top_candidate_for_jd(job_description=job_description)
+    background_task.add_task(candidate_analysis_service.get_the_top_candidate_for_jd, job_description=job_description)
     logger.info("Get best candidate exit point")
     return JSONResponse(
-        content={"response": response}, status_code=response["status_code"]
+        content={"response": "Recieved"}, status_code=200
     )

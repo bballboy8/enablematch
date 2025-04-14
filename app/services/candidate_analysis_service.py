@@ -663,7 +663,7 @@ async def get_the_top_candidate_for_jd(job_description: str):
         logger.info("Fetching target candidates")
         openai_client = OpenAIService()
         users = db[constants.CANDIDATES_BLOB_COLLECTION].find({})
-        users = await users.to_list(length=10)
+        users = await users.to_list(length=100)
 
         if not users:
             return {"status_code": 200, "response": None}
@@ -685,55 +685,62 @@ async def get_the_top_candidate_for_jd(job_description: str):
             logger.info(f"Total pairs found: {len(all_pairs)}")
 
             for i, pair in enumerate(all_pairs):
-                candidate1 = pair[0]
-                candidate2 = pair[1]
-                prompt = helper_functions.create_comparing_prompt(job_description, candidate1["blob"], candidate2["blob"], candidate1["user_id"], candidate2["user_id"], candidate_1_ote=candidate1["current_ote"], candidate_2_ote=candidate2["current_ote"])
+                try:
+                    candidate1 = pair[0]
+                    candidate2 = pair[1]
+                    prompt = helper_functions.create_comparing_prompt(job_description, candidate1["blob"], candidate2["blob"], candidate1["user_id"], candidate2["user_id"], candidate_1_ote=candidate1["current_ote"], candidate_2_ote=candidate2["current_ote"])
 
-                system_prompt = f"""
-                            You are an expert evaluator helping compare two candidates for a role, using their resumes and conversation transcripts. Your task is to extract structured metadata from the provided information, and identify which candidate is more suitable based on the job description and the evaluation criteria.
-                            Be meticulous, objective, and data-driven in your analysis. Do not assume information not present in the candidate blobs.
-                            Output the result as follows:
-                            - `candidate_1_metadata`: JSON object matching the specified schema
-                            - `candidate_2_metadata`: JSON object matching the specified schema
-                            - `more_suitable_candidate_id`: the ID of the more suitable candidate
-                             Important formatting instruction:
-                            Return only the JSON object with no extra text, explanation, or markdown formatting like triple backticks. Do not wrap the response in ```json or any other delimiters. Only return raw, parseable JSON.
-                            """
+                    system_prompt = f"""
+                                You are an expert evaluator helping compare two candidates for a role, using their resumes and conversation transcripts. Your task is to extract structured metadata from the provided information, and identify which candidate is more suitable based on the job description and the evaluation criteria.
+                                Be meticulous, objective, and data-driven in your analysis. Do not assume information not present in the candidate blobs.
+                                Output the result as follows:
+                                - `candidate_1_metadata`: JSON object matching the specified schema
+                                - `candidate_2_metadata`: JSON object matching the specified schema
+                                - `more_suitable_candidate_id`: the ID of the more suitable candidate
+                                Important formatting instruction:
+                                - The key names should be same as the schema provided in the prompt.
+                                Return only the JSON object with no extra text, explanation, or markdown formatting like triple backticks. Do not wrap the response in ```json or any other delimiters. Only return raw, parseable JSON.
+                                """
 
-                openai_response = await openai_client.get_gpt_response(prompt, system_prompt)
-                if openai_response["status_code"] != 200:
+                    openai_response = await openai_client.get_gpt_response(prompt, system_prompt)
+                    if openai_response["status_code"] != 200:
+                        continue
+                    time.sleep(1)
+                    print(openai_response["response"])
+                    data = json.loads(openai_response["response"])
+                    winner_id = data["more_suitable_candidate_id"]
+                    candidate_1_metadata = data["candidate_1_metadata"]
+                    candidate_2_metadata = data["candidate_2_metadata"]
+
+                    candidate_1_metadata = await flatten_dict(candidate_1_metadata)
+                    candidate_2_metadata = await flatten_dict(candidate_2_metadata)
+
+                    round_metadata.append({
+                        'round': round_number,
+                        "pair": i + 1,
+                        "salesforce_user_id": candidate1["salesforce_id"],
+                        'candidate_id': candidate1["user_id"],
+                        "candidate_name": candidate1["name"],
+                        'winner_id': winner_id,
+                        **candidate_1_metadata,
+                    })
+
+                    round_metadata.append({
+                        'round': round_number,
+                        "pair": i + 1,
+                        "salesforce_user_id": candidate2["salesforce_id"],
+                        'candidate_id': candidate2["user_id"],
+                        "candidate_name": candidate2["name"],
+                        'winner_id': winner_id,
+                        **candidate_2_metadata,
+                    })
+
+
+                    winner = next(c for c in pair if c["user_id"] == winner_id)
+                    next_round.append(winner)
+                except Exception as e:
+                    logger.error(f"Error processing pair {i + 1}: {e}")
                     continue
-                time.sleep(1)
-                print(openai_response["response"])
-                data = json.loads(openai_response["response"])
-                winner_id = data["more_suitable_candidate_id"]
-                candidate_1_metadata = data["candidate_1_metadata"]
-                candidate_2_metadata = data["candidate_2_metadata"]
-
-                candidate_1_metadata = await flatten_dict(candidate_1_metadata)
-                candidate_2_metadata = await flatten_dict(candidate_2_metadata)
-
-                round_metadata.append({
-                    'round': round_number,
-                    "pair": i + 1,
-                    "salesforce_user_id": candidate1["salesforce_id"],
-                    'candidate_id': candidate1["user_id"],
-                    'winner_id': winner_id,
-                    **candidate_1_metadata,
-                })
-
-                round_metadata.append({
-                    'round': round_number,
-                    "pair": i + 1,
-                    "salesforce_user_id": candidate2["salesforce_id"],
-                    'candidate_id': candidate2["user_id"],
-                    'winner_id': winner_id,
-                    **candidate_2_metadata,
-                })
-
-
-                winner = next(c for c in pair if c["user_id"] == winner_id)
-                next_round.append(winner)
 
             # Write the metadata for this round to an Excel file
             round_df = pd.DataFrame(round_metadata)
@@ -741,6 +748,9 @@ async def get_the_top_candidate_for_jd(job_description: str):
             round_df.to_excel(round_filename, index=False)
 
             users = next_round
+            # shuffle the users for the next round
+            random.shuffle(users)
+            print(f"Round {round_number} completed. Remaining candidates: {len(users)}")
             round_number += 1
 
         final_winner = users[0] if users else None
