@@ -14,6 +14,8 @@ import time
 import pandas as pd
 from datetime import datetime
 import random
+from typing import Dict, Any
+import re
 
 async def analyze_database_candidate(job_description, db_id):
     try:
@@ -315,7 +317,7 @@ async def upload_cooked_records_to_pinecone():
             "response": f"An error occurred while uploading cooked records to Pinecone: {e}",
             "status_code": 500,
         }
-    
+
 import asyncio
 
 import asyncio
@@ -493,7 +495,6 @@ async def generate_metadata_of_candidates(number_of_candidates: int):
         salesforce_users_collection = db[constants.SALESFORCE_USERS_COLLECTION]
         candidates_ai_generated_metadata_collection = db[constants.CANDIDATES_AI_GENERATED_METADATA_COLLECTION]
 
-
         users_gong_transcript_collection = db[
             constants.USERS_GONG_TRANSCRIPT_COLLECTION
         ]
@@ -537,9 +538,9 @@ async def generate_metadata_of_candidates(number_of_candidates: int):
                     continue
 
                 experience_years = [ {'starts_at': experience.get("starts_at"), "ends_at": experience.get("ends_at"), "company" : experience.get("company")} for experience in user_profile.get('experiences', [])]
-                
+
                 experience_years = calculate_work_experience(experience_years)
-                
+
                 print(experience_years)
 
                 input_resume = await proxy_curl_service.get_key_value_concatenation(
@@ -548,7 +549,9 @@ async def generate_metadata_of_candidates(number_of_candidates: int):
 
                 input_resume = f"Total Experience: {experience_years} years\n{input_resume}"
 
-                text_blob = " ".join(conversation_summary) + input_resume
+                recruiter_provided_summary = f"Recruiter provided summary: {user.get('Summary_of_Candidate__c', '')}\n\n"
+
+                text_blob = f"{recruiter_provided_summary} {input_resume} {''.join(conversation_summary)}"
 
                 response = await openai_client.generate_metadata_via_ai(text_blob)
                 if response["status_code"] != 200:
@@ -562,18 +565,22 @@ async def generate_metadata_of_candidates(number_of_candidates: int):
                 for key, value in flattened_data.items():
                     if value is None:
                         continue
-                    if isinstance(value, str):
+                    if isinstance(value, str) and str(value).isdigit():
+                        flatten_dict[key] = int(value)
+                    elif isinstance(value, str):
                         flattened_data[key] = value.lower()
                     elif isinstance(value, list):
                         flattened_data[key] = [item.lower() for item in value]
 
                 data = {
-                        "user_id": str(user.get("_id", "")),
-                        "experience_years": experience_years,
-                        **flattened_data
-                    }
-                
-                print(data)
+                    "name": user.get("Name"),
+                    "salesforce_id": user.get("Id"),
+                    "email": user.get("PersonEmail"),
+                    "user_id": str(user.get("_id", "")),
+                    "experience_years": experience_years,
+                    **flattened_data,
+                }
+                await candidates_ai_generated_metadata_collection.insert_one(data)
 
                 target_candidates.append(
                     data
@@ -584,9 +591,9 @@ async def generate_metadata_of_candidates(number_of_candidates: int):
                 continue
 
         # store candidates in bulk in a batch of 100
-        candidates = [target_candidates[i:i + 10] for i in range(0, len(target_candidates), 10)]
-        for target_candidates_batch in candidates:
-            await candidates_ai_generated_metadata_collection.insert_many(target_candidates_batch)        
+        # candidates = [target_candidates[i:i + 10] for i in range(0, len(target_candidates), 10)]
+        # for target_candidates_batch in candidates:
+        #     await candidates_ai_generated_metadata_collection.insert_many(target_candidates_batch)        
 
         return {
             "response": f"Metadata generated for {len(target_candidates)} candidates.",
@@ -598,7 +605,23 @@ async def generate_metadata_of_candidates(number_of_candidates: int):
             "response": f"An error occurred while fetching target candidates: {e}",
             "status_code": 500,
         }
-    
+
+def build_mongo_filter(input_dict: Dict[str, Any]) -> Dict:
+    filter_criteria = {}
+
+    for key, value in input_dict.items():
+        if value is None:
+            continue
+
+        if isinstance(value, (int, float)) or (isinstance(value, str) and value.isdigit()):
+            # Cast string digits to int
+            filter_criteria[key] = {"$gte": float(value)}
+        elif isinstance(value, str):
+            # Case-insensitive partial match
+            filter_criteria[key] = {"$regex": re.escape(value), "$options": "i"}
+
+    return filter_criteria
+
 async def get_candidates_data(user):
     try:
         logger.info(f"Fetching candidate data for user {user}")
@@ -644,7 +667,6 @@ async def get_candidates_data(user):
             "status_code": 500,
             "response": str(e),
         }
-
 
 
 async def flatten_dict(d, parent_key='', sep='_'):

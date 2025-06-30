@@ -143,10 +143,15 @@ class OpenAIService:
                             Input:
                             Resume: A candidate's resume containing experience, skills, and background information.
                             Gong Transcripts: Conversations, sales calls, and interviews that reveal the candidate's competencies, communication style, and strategic thinking.
+                            Recruiter provided summary: A summary of the candidate provided by the recruiter.
                             Output Format:
                             Provide the extracted data in the following JSON structure:
 
                             {
+                            "score": {
+                                "final_score": "<Score out of 100 based on the candidate's resume, gong transcripts and recruiter provided summary>",
+                                "reasoning": "<Reasoning for the score>"
+                            },
                             "compensation_logistics": {
                                 "compensation_range": "<Extracted or inferred from experience/role> Should be a number in USD Thousands like 80000 in Integer",
                                 "location_remote_flexibility": "<Remote/In-office/Hybrid based on location details> One word only",
