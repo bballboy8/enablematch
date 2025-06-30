@@ -541,8 +541,10 @@ async def generate_metadata_of_candidates(number_of_candidates: int, job_descrip
                 input_resume = await proxy_curl_service.get_key_value_concatenation(
                     user_profile
                 )
-                
-                experience_years = await openai_client.generate_relevant_experience_years(input_resume, job_description)
+
+                experience_years = [ {'starts_at': experience.get("starts_at"), "ends_at": experience.get("ends_at"), "company" : experience.get("company"), "title" : experience.get("title"), "description" : experience.get("description")} for experience in user_profile.get('experiences', [])]
+                experience_years = "\n".join([f"Starts at: {experience.get('starts_at')}, Ends at: {experience.get('ends_at')}, Company: {experience.get('company')}, Title: {experience.get('title')}, Description: {experience.get('description')}" for experience in experience_years])
+                experience_years = await openai_client.generate_relevant_experience_years(experience_years, job_description)
                 if experience_years["status_code"] != 200:
                     continue
                 experience_years = experience_years["relevant_experience_years"]

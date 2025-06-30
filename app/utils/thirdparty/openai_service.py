@@ -250,11 +250,11 @@ class OpenAIService:
                 "status_code": 500,
             }
         
-    async def generate_relevant_experience_years(self, resume_text: str, job_description: str):
+    async def generate_relevant_experience_years(self, experience_text: str, job_description: str):
         try:
             prompt = f"""
-            Resume:
-            {resume_text.strip()}
+            Experience:
+            {experience_text.strip()}
 
             Job Description:
             {job_description.strip()}
