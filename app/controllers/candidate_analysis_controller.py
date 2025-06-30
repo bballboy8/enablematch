@@ -7,6 +7,8 @@ from typing import Optional
 from utils import helper_functions
 from blueprints.candidate_analysis_blueprint import CandidateAnalysisRequestBody, CandidateSuggestionsRequestBody, DBCandidateAnalysisRequestBody
 from fastapi.background import BackgroundTasks
+from pydantic import BaseModel
+
 router = APIRouter()
 
 
@@ -121,12 +123,15 @@ async def get_candidate_suggestions_from_db(request: CandidateSuggestionsRequest
         content={"response": response}, status_code=response["status_code"]
     )
 
+class GenerateMetadataForCandidatesRequestBody(BaseModel):
+    number_of_candidates: int
+    job_description: str
 
-@router.get("/generate-metadata-for-candidates")
-async def generate_metadata_for_candidates(number_of_candidates:int, user_id: str = Depends(get_current_user_id)):
+@router.post("/generate-metadata-for-candidates")
+async def generate_metadata_for_candidates(request: GenerateMetadataForCandidatesRequestBody, user_id: str = Depends(get_current_user_id)):
     """Generate metadata for the candidates."""
     logger.info("Generate metadata for candidates entry point")
-    response = await candidate_analysis_service.generate_metadata_of_candidates(number_of_candidates=number_of_candidates)
+    response = await candidate_analysis_service.generate_metadata_of_candidates(number_of_candidates=request.number_of_candidates, job_description=request.job_description)
     logger.info("Generate metadata for candidates exit point")
     return JSONResponse(
         content={"response": response}, status_code=response["status_code"]

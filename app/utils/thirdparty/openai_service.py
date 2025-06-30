@@ -1,7 +1,7 @@
 from logging_module import logger
 from openai import OpenAI
 from config import constants
-
+import re
 
 class OpenAIService:
     def __init__(self):
@@ -144,13 +144,14 @@ class OpenAIService:
                             Resume: A candidate's resume containing experience, skills, and background information.
                             Gong Transcripts: Conversations, sales calls, and interviews that reveal the candidate's competencies, communication style, and strategic thinking.
                             Recruiter provided summary: A summary of the candidate provided by the recruiter.
+                            Job Description: A job description of the role.
                             Output Format:
                             Provide the extracted data in the following JSON structure:
 
                             {
                             "score": {
                                 "final_score": "<Score out of 100 based on the candidate's resume, gong transcripts and recruiter provided summary>",
-                                "reasoning": "<Reasoning for the score>"
+                                "reasoning": "<Reasoning for the score> Should be atleast 100 words and be specific on what its reffering to."
                             },
                             "compensation_logistics": {
                                 "compensation_range": "<Extracted or inferred from experience/role> Should be a number in USD Thousands like 80000 in Integer",
@@ -227,6 +228,7 @@ class OpenAIService:
 
                             Extract industry, role level, and sales methodology accurately without assuming.
                             Use multiple data points across resume and transcripts to ensure reliable extraction.
+                            All the metrics/ratings should be relevant to the job description.
                             
                     """
             prompt = f"""
@@ -245,5 +247,45 @@ class OpenAIService:
             logger.error(f"An error occurred while generating metadata: {e}")
             return {
                 "message": f"An error occurred while generating metadata: {e}",
+                "status_code": 500,
+            }
+        
+    async def generate_relevant_experience_years(self, resume_text: str, job_description: str):
+        try:
+            prompt = f"""
+            Resume:
+            {resume_text.strip()}
+
+            Job Description:
+            {job_description.strip()}
+            """
+
+            system_prompt = """
+            You are an expert at evaluating resumes against job descriptions.
+            Your task is to estimate how many years of experience the candidate has that is directly relevant to the role described in the job description.
+            Focus only on relevant industry or role-specific experience.
+            Skip the short term experience or stints like internships, part-time jobs, etc.
+            Avoid overlapping experience.
+            Respond with a single number (e.g., "5" for five years).
+            """
+
+            response = await self.get_gpt_response(system_prompt=system_prompt, prompt=prompt)
+
+            if response.get("status_code") == 500:
+                return response
+
+            raw_output = response.get("response", "").strip()
+            match = re.search(r"\d+(?:\.\d+)?", raw_output)
+            experience_years = int(float(match.group(0))) if match else 0
+
+            return {
+                "relevant_experience_years": experience_years,
+                "status_code": 200
+            }
+
+        except Exception as e:
+            logger.exception("Failed to generate relevant experience years")
+            return {
+                "message": f"An error occurred while generating relevant experience years: {str(e)}",
                 "status_code": 500,
             }

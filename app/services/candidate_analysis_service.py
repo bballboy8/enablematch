@@ -488,7 +488,7 @@ async def fetch_candidates_for_matching_job_description(job_description):
         return {"status_code": 500, "response": str(e)}
 
 
-async def generate_metadata_of_candidates(number_of_candidates: int):
+async def generate_metadata_of_candidates(number_of_candidates: int, job_description: str):
     try:
         logger.info("Fetching target candidates")
         openai_client = OpenAIService()
@@ -537,21 +537,28 @@ async def generate_metadata_of_candidates(number_of_candidates: int):
                 if not user_profile:
                     continue
 
-                experience_years = [ {'starts_at': experience.get("starts_at"), "ends_at": experience.get("ends_at"), "company" : experience.get("company")} for experience in user_profile.get('experiences', [])]
-
-                experience_years = calculate_work_experience(experience_years)
-
-                print(experience_years)
 
                 input_resume = await proxy_curl_service.get_key_value_concatenation(
                     user_profile
                 )
+                
+                experience_years = await openai_client.generate_relevant_experience_years(input_resume, job_description)
+                if experience_years["status_code"] != 200:
+                    continue
+                experience_years = experience_years["relevant_experience_years"]
 
-                input_resume = f"Total Experience: {experience_years} years\n{input_resume}"
+                if experience_years == 0:
+                    continue
+
+                print(experience_years)
+
+                input_resume = f"Total Relevant Experience: {experience_years} years\n{input_resume}"
 
                 recruiter_provided_summary = f"Recruiter provided summary: {user.get('Summary_of_Candidate__c', '')}\n\n"
 
-                text_blob = f"{recruiter_provided_summary} {input_resume} {''.join(conversation_summary)}"
+                job_description = f"Job Description: {job_description}\n\n"
+
+                text_blob = f"{recruiter_provided_summary} {input_resume} {''.join(conversation_summary)} {job_description}"
 
                 response = await openai_client.generate_metadata_via_ai(text_blob)
                 if response["status_code"] != 200:
@@ -566,7 +573,7 @@ async def generate_metadata_of_candidates(number_of_candidates: int):
                     if value is None:
                         continue
                     if isinstance(value, str) and str(value).isdigit():
-                        flatten_dict[key] = int(value)
+                        flattened_data[key] = int(value)
                     elif isinstance(value, str):
                         flattened_data[key] = value.lower()
                     elif isinstance(value, list):
@@ -587,6 +594,8 @@ async def generate_metadata_of_candidates(number_of_candidates: int):
                 )
 
             except Exception as e:
+                import traceback
+                traceback.print_exc()
                 logger.error(f"Error processing record {user.get('_id', '')}: {e}")
                 continue
 
