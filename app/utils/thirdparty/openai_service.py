@@ -135,22 +135,24 @@ class OpenAIService:
                 "status_code": 500,
             }
 
-    async def generate_metadata_via_ai(self, text_blob):
+    async def generate_metadata_via_ai(self, text_blob, experience_years):
         try:
             system_prompt = """
-                            You are an advanced AI specializing in extracting structured candidate evaluation attributes from resumes and Gong transcripts. Given unstructured input data, your task is to identify and extract key attributes into a structured JSON format.
+                            You are an advanced Hiring Manager AI specializing in extracting structured candidate evaluation attributes from resumes and Gong transcripts of a candidate. Given unstructured input data, your task is to identify and extract key attributes into a structured JSON format.
 
                             Input:
                             Resume: A candidate's resume containing experience, skills, and background information.
+                            Candidates Experience: A summary of the candidate's experience from the recruiter.
                             Gong Transcripts: Conversations, sales calls, and interviews that reveal the candidate's competencies, communication style, and strategic thinking.
                             Recruiter provided summary: A summary of the candidate provided by the recruiter.
                             Job Description: A job description of the role.
+                            Experience Years: The number of years of experience the candidate has that is directly relevant to the role described in the job description.
                             Output Format:
                             Provide the extracted data in the following JSON structure:
 
                             {
                             "score": {
-                                "final_score": "<Score out of 100 based on the candidate's resume, gong transcripts and recruiter provided summary>",
+                                "final_score": "<Score out of 100 based on the candidate's resume, gong transcripts and recruiter provided summary ang attributes mentioned in the extracted data. The score should be based on the job description and the candidate's resume, gong transcripts and recruiter provided summary. Also highlight the key attributes that led to that score >",
                                 "reasoning": "<Reasoning for the score> Should be atleast 100 words and be specific on what its reffering to."
                             },
                             "compensation_logistics": {
@@ -210,7 +212,7 @@ class OpenAIService:
                             }
 
 
-                            Instructions for Extraction:
+                            Strict rules for Extraction and Evaluation:
                             Identify Key Data
 
                             Extract details from job titles, responsibilities, achievements, and industry-specific terminology in the resume.
@@ -229,7 +231,13 @@ class OpenAIService:
                             Extract industry, role level, and sales methodology accurately without assuming.
                             Use multiple data points across resume and transcripts to ensure reliable extraction.
                             All the metrics/ratings should be relevant to the job description.
-                            
+                            A good candidate for a VP of Enablement role should have several years at the VP, Sr Director, or Director level in a sales enablement role with good tenures at each.
+                            It needs to weight years in relevant roles more than years in irrelevant roles.
+                            Avoid overlapping experience.
+                            If the candidate has experience in a role that is not relevant to the job description, it should not be considered.
+                            For each penalty decrease the candidates score.
+                            Stricly penalize the people who non relevant experience and decrease the score.
+                            If the candidate has experience in a role that is not relevant to the job description, it should not be considered assign a very low score.
                     """
             prompt = f"""
                 Generate metadata from the given text blob.  
@@ -266,6 +274,8 @@ class OpenAIService:
             Focus only on relevant industry or role-specific experience.
             Skip the short term experience or stints like internships, part-time jobs, etc.
             Avoid overlapping experience.
+            A good candidate for a VP of Enablement role should have several years at the VP, Sr Director, or Director level in a sales enablement role with good tenures at each.
+            It needs to weight years in relevant roles more than years in irrelevant roles.
             Respond with a single number (e.g., "5" for five years).
             """
 

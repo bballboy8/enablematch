@@ -562,7 +562,7 @@ async def generate_metadata_of_candidates(number_of_candidates: int, job_descrip
 
                 text_blob = f"{recruiter_provided_summary} {input_resume} {''.join(conversation_summary)} {job_description}"
 
-                response = await openai_client.generate_metadata_via_ai(text_blob)
+                response = await openai_client.generate_metadata_via_ai(text_blob, experience_years)
                 if response["status_code"] != 200:
                     continue
 
