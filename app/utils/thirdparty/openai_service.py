@@ -152,8 +152,10 @@ class OpenAIService:
 
                             {
                             "score": {
-                                "final_score": "<Score out of 100 based on the candidate's resume, gong transcripts and recruiter provided summary ang attributes mentioned in the extracted data. The score should be based on the job description and the candidate's resume, gong transcripts and recruiter provided summary. Also highlight the key attributes that led to that score >",
-                                "reasoning": "<Reasoning for the score> Should be atleast 100 words and be specific on what its reffering to."
+                                "final_score": "<Score out of 100 based on the candidate's resume, gong transcripts and recruiter provided summary ang attributes mentioned in the extracted data. 
+                                The score should be based on the job description and the candidate's resume, gong transcripts and recruiter provided summary>",
+                                "reasoning": "<Reasoning for the score> Should be atleast 100 words and be specific on what its reffering to in jd, resume, gong transcripts and recruiter provided summary>",
+                                "category_wise_score": "<Category wise score which leads to the final_score>" Follow this format: "strategic business impact: 18/20, sales enablement expertise: 16/20, leadership execution ability: 14/20, cultural fit: 15/20, compensation & logistics inferring: 15/20."
                             },
                             "compensation_logistics": {
                                 "compensation_range": "<Extracted or inferred from experience/role> Should be a number in USD Thousands like 80000 in Integer",
