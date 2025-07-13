@@ -544,17 +544,15 @@ async def generate_metadata_of_candidates(number_of_candidates: int, job_descrip
 
                 experience_years = [ {'starts_at': experience.get("starts_at"), "ends_at": experience.get("ends_at"), "company" : experience.get("company"), "title" : experience.get("title"), "description" : experience.get("description")} for experience in user_profile.get('experiences', [])]
                 experience_years = "\n".join([f"Starts at: {experience.get('starts_at')}, Ends at: {experience.get('ends_at')}, Company: {experience.get('company')}, Title: {experience.get('title')}, Description: {experience.get('description')}" for experience in experience_years])
-                experience_years = await openai_client.generate_relevant_experience_years(experience_years, job_description)
+                experience_years = await openai_client.generate_relevant_experience_years_v2(experience_years, job_description)
                 if experience_years["status_code"] != 200:
                     continue
-                experience_years = experience_years["relevant_experience_years"]
+                relevant_experience_years = experience_years["relevant_experience_years"]
+                senior_level_years = experience_years["senior_level_years"]
 
-                if experience_years == 0:
-                    continue
+                print(relevant_experience_years, senior_level_years)
 
-                print(experience_years)
-
-                input_resume = f"Total Relevant Experience: {experience_years} years\n{input_resume}"
+                input_resume = f"Total Relevant Experience: {relevant_experience_years} years, Senior Level Experience: {senior_level_years} years\n{input_resume}"
 
                 recruiter_provided_summary = f"Recruiter provided summary: {user.get('Summary_of_Candidate__c', '')}\n\n"
 
@@ -562,7 +560,7 @@ async def generate_metadata_of_candidates(number_of_candidates: int, job_descrip
 
                 text_blob = f"{recruiter_provided_summary} {input_resume} {''.join(conversation_summary)} {job_description}"
 
-                response = await openai_client.generate_metadata_via_ai(text_blob, experience_years)
+                response = await openai_client.generate_metadata_via_ai_v2(text_blob)
                 if response["status_code"] != 200:
                     continue
 
@@ -586,7 +584,8 @@ async def generate_metadata_of_candidates(number_of_candidates: int, job_descrip
                     "salesforce_id": user.get("Id"),
                     "email": user.get("PersonEmail"),
                     "user_id": str(user.get("_id", "")),
-                    "experience_years": experience_years,
+                    "relevant_experience_years": relevant_experience_years,
+                    "senior_level_years": senior_level_years,
                     **flattened_data,
                 }
                 await candidates_ai_generated_metadata_collection.insert_one(data)
