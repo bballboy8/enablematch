@@ -766,7 +766,7 @@ async def select_candidates_for_matching(job_description: str):
         existing_candidates = await candidates_ai_generated_metadata_collection.find({"final_score": {"$gte": 75}}).to_list(length=None)
         for candidate in existing_candidates:
             openai_client = OpenAIService()
-            response = await openai_client.select_candidates_for_matching(job_description, candidate["summary"])
+            response = await openai_client.select_candidates_for_matching(job_description, candidate["reasoning"])
             if response["status_code"] != 200:
                 continue
             if response["response"] == "yes":
