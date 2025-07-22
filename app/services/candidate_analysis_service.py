@@ -769,6 +769,7 @@ async def select_candidates_for_matching(job_description: str):
             response = await openai_client.select_candidates_for_matching(job_description, candidate["reasoning"])
             if response["status_code"] != 200:
                 continue
+            print(response["response"])
             if response["response"] == "yes":
                 await candidates_ai_generated_metadata_collection.update_one({"_id": candidate["_id"]}, {"$set": {"selected_for_matching": True}})
                 logger.info(f"Selected candidate: {candidate['name']}")
