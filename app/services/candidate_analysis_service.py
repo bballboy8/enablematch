@@ -763,7 +763,7 @@ async def select_candidates_for_matching(job_description: str):
             """
         logger.info("Selecting candidates for matching")
         candidates_ai_generated_metadata_collection = db[constants.CANDIDATES_AI_GENERATED_METADATA_COLLECTION]
-        existing_candidates = await candidates_ai_generated_metadata_collection.find({"final_score": {"$gte": 75}}).to_list(length=None)
+        existing_candidates = await candidates_ai_generated_metadata_collection.find({"final_score": {"$gte": 75}, "selected_for_matching": {"$exists": False}}).to_list(length=None)
         for candidate in existing_candidates:
             openai_client = OpenAIService()
             response = await openai_client.select_candidates_for_matching(job_description, candidate["reasoning"])
