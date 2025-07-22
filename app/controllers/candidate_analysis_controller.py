@@ -137,7 +137,15 @@ async def generate_metadata_for_candidates(background_tasks: BackgroundTasks, re
         content={"response": "Metadata generation has been initiated."}, status_code=200
     )
 
-
+@router.post("/select-candidates-for-matching")
+async def select_candidates_for_matching(background_tasks: BackgroundTasks, request: CandidateSuggestionsRequestBody, user_id: str = Depends(get_current_user_id)):
+    """Select the candidates for matching."""
+    logger.info("Select candidates for matching entry point")
+    background_tasks.add_task(candidate_analysis_service.select_candidates_for_matching, job_description=request.job_description)
+    logger.info("Select candidates for matching exit point")
+    return JSONResponse(
+        content={"response": "Candidates selection has been initiated."}, status_code=200
+    )
 @router.get("/get-best-candidate")
 async def get_best_candidate(job_description: str,background_task:BackgroundTasks,  user_id: str = Depends(get_current_user_id)):
     """Get the best candidate for the job description."""

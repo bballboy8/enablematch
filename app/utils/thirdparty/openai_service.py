@@ -497,6 +497,20 @@ class OpenAIService:
             return {"message": f"Error generating experience years: {e}",
                     "status_code": 500}
 
+    async def select_candidates_for_matching(self, job_description: str, candidate_summary: str):
+        try:
+            system_prompt = """
+            You are an expert recruiter specializing in analyzing candidates. You will be given a job description and a candidate summary. Your task is to select the suitable candidate for the job description. If based on positions experience required select the candidate who aligns with the experience required. If its either lower or higher than the experience required skip those, if its within the range select the candidate. You need to respond with yes or no.
+            """
+            prompt = f"Job Description: {job_description}\n\nCandidate Summary: {candidate_summary}"
+            response = await self.get_gpt_response(system_prompt=system_prompt, prompt=prompt)
+            return response
+        except Exception as e:
+            logger.exception("Failed to select candidates for matching")
+            return {
+                "message": f"An error occurred while selecting candidates for matching: {str(e)}",
+                "status_code": 500,
+            }
 
         
     async def generate_relevant_experience_years(self, experience_text: str, job_description: str):

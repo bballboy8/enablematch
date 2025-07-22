@@ -673,10 +673,7 @@ async def generate_metadata_of_candidates(number_of_candidates: int, job_descrip
                 logger.error(f"Error processing record {user.get('_id', '')}: {e}")
                 continue
 
-        # store candidates in bulk in a batch of 100
-        # candidates = [target_candidates[i:i + 10] for i in range(0, len(target_candidates), 10)]
-        # for target_candidates_batch in candidates:
-        #     await candidates_ai_generated_metadata_collection.insert_many(target_candidates_batch)        
+        logger.info(f"Metadata generated for {len(target_candidates)} candidates.")
 
         return {
             "response": f"Metadata generated for {len(target_candidates)} candidates.",
@@ -688,6 +685,100 @@ async def generate_metadata_of_candidates(number_of_candidates: int, job_descrip
             "response": f"An error occurred while fetching target candidates: {e}",
             "status_code": 500,
         }
+    
+async def select_candidates_for_matching(job_description: str):
+    try:
+        job_description= """
+                Role Overview at Zowie
+                Title & Level:
+                Enablement Manager or (lightweight) Director
+                Not a senior director or VP-level role—must be hands-on and comfortable as a team of one.
+                Someone who can scale the function in the future, but is not expecting to manage a team in 2025.
+                Scope:
+                First dedicated GTM Enablement hire at a Series A startup
+                Own onboarding, training, process adoption, reinforcement, and sales methodology rollout (esp. MEDDIC)
+                Support Sales (AEs), SDRs, Customer Success, and cross-functional partners
+                Partner closely with Wes (Head of Sales), as well as founders, product, and partnerships
+                Responsible for adapting and extending materials originally built for partner enablement
+                Help design and implement Gong enablement, Sandler sales training, and ongoing product training
+
+                Location Requirements
+                U.S.-based only
+
+                East Coast preferred, Central time zone acceptable
+                West Coast disfavored due to EU HQ coordination
+
+                Compensation & Benefits
+                Likely Range:
+                $130K-$150K all-in, with $160K as a stretch upper bound
+                Equity included
+                Excellent benefits package (better than ThoughtSpot/Salesforce)
+                401(k) plan (no match), health coverage, etc.
+                Note: Compensation expectations will be impacted if a third-party recruiter is used, so the true take-home may be lower depending on recruiting structure.
+
+                Ideal Candidate Background
+                Experience:
+                3-5 years of enablement experience in SaaS organizations
+                Strong background in project management, content repurposing, and onboarding programs
+                Experience coaching and training sellers, especially around methodology (MEDDIC, Sandler)
+                Hands-on experience with CRM (e.g., Salesforce) and sales engagement tools (e.g., Gong, Outreach, Salesloft)
+                Soft Skills & Attributes:
+                Ownership mindset - self-starter who can operate independently with limited structure
+                Strong stakeholder management skills across sales, CS, and executive teams
+                Excellent written and verbal communication - clarity and brevity matter
+                Curious and excited about AI - must be enthusiastic about Zowie's AI-driven product and space
+                A coach's mentality - someone who genuinely enjoys making others successful
+                Emotionally intelligent and comfortable working with founders who may be direct and opinionated
+
+                Company Context
+                Stage:
+
+                Polish-headquartered, U.S.-expanding AI startup in the agent/automation space
+                Formerly E-commerce focused, now expanding across industries
+                ~115 employees globally, aiming for ~130 by year-end
+                Raising Series B ($30-50M) in Q3 2025
+
+                Currently has:
+
+                6 AEs (+1 pending), 2 SDRs (Poland), 8-person CS org, 3 SEs
+
+
+                New partner enablement manager hired, product marketing to follow
+
+                Current Enablement State:
+
+                Minimal structure - rolled out MEDDIC, Gong implementation underway
+                No GTM enablement lead; need someone to build the foundation from scratch
+                Significant internal appetite for training, coaching, and onboarding maturity
+
+
+                Key Success Factors in This Role
+                Thrives in ambiguity and early-stage, resource-light environments
+                Able to partner cross-functionally without formal authority
+                Can create scalable systems, not just run point solutions
+                Doesn't mind rolling up sleeves: writing content, delivering live sessions, reinforcing process
+                Not looking for a flashy title or large team right away
+                Interested in building something meaningful, not just maintaining it
+
+            """
+        logger.info("Selecting candidates for matching")
+        candidates_ai_generated_metadata_collection = db[constants.CANDIDATES_AI_GENERATED_METADATA_COLLECTION]
+        existing_candidates = await candidates_ai_generated_metadata_collection.find({"final_score": {"$gte": 75}}).to_list(length=None)
+        for candidate in existing_candidates:
+            openai_client = OpenAIService()
+            response = await openai_client.select_candidates_for_matching(job_description, candidate["summary"])
+            if response["status_code"] != 200:
+                continue
+            if response["response"] == "yes":
+                await candidates_ai_generated_metadata_collection.update_one({"_id": candidate["_id"]}, {"$set": {"selected_for_matching": True}})
+                logger.info(f"Selected candidate: {candidate['name']}")
+    
+
+        return {
+            "status_code": 200,
+        }
+    except Exception as e:
+        logger.error(f"Error in selecting candidates for matching: {e}")
 
 def build_mongo_filter(input_dict: Dict[str, Any]) -> Dict:
     filter_criteria = {}
