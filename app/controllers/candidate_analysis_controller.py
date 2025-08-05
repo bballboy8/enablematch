@@ -126,6 +126,9 @@ async def get_candidate_suggestions_from_db(request: CandidateSuggestionsRequest
 class GenerateMetadataForCandidatesRequestBody(BaseModel):
     number_of_candidates: int
     job_description: str
+    compensation_range: str
+    location: str
+
 
 @router.post("/generate-metadata-for-candidates")
 async def generate_metadata_for_candidates(background_tasks: BackgroundTasks, request: GenerateMetadataForCandidatesRequestBody, user_id: str = Depends(get_current_user_id)):
