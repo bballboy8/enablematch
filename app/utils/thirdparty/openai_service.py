@@ -274,7 +274,7 @@ class OpenAIService:
             {
             "score": {
                 "final_score": <int 0-100>,
-                "reasoning": "<≥100-word explanation referencing JD, resume, Gong, recruiter summary>",
+                "reasoning": "<100-word explanation referencing JD, resume, Gong, recruiter summary>",
                 "category_wise_score": "strategic business impact: N/20, sales enablement expertise: N/20, leadership execution ability: N/20, cultural fit: N/20, compensation & logistics inferring: N/20",
                 "fit": "yes or no if final_score is greater than 90"
             },
@@ -351,10 +351,14 @@ class OpenAIService:
 
                 final_score = sum of the five category scores (max = 100).
 
+                Notes:
+                • For the Compensation you will be given a range, we can have a 15% tolerance. Beyond the 15%, their ranking should drop significantly.
+                • For the Location you will be given a location, if its not under 100 miles of the location, their ranking should drop significantly, if its a remote location this condiation should not be applied.
+
                 Hard caps and penalties (unchanged):
                 • No demonstrable leadership → final_score < 80.  
-                • <3 yrs senior enablement → final_score < 70.  
-                • Three or more short stints → proportional deduction.
+                • <3 yrs senior enablement → final_score < 70.  
+                • One or more short stints → proportional deduction.
 
                 `reasoning` must cite evidence from JD, resume, Gong transcripts, and recruiter summary.
                 """
@@ -386,7 +390,6 @@ class OpenAIService:
             The Heirarchy of the experience is as follows:
             VP > Sr Director > Director > Sr Manager > Manager > Senior > Junior
             Avoid overlapping experience.
-            If the candidate has experience in a role that is not relevant to the job description, it should not be considered.
             For each penalty decrease the candidates score.
             Stricly penalize the people who non relevant experience and decrease the score.
             Stricly penalize the people who are overqualified for the role and decrease the score.
