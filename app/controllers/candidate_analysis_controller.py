@@ -144,7 +144,7 @@ async def generate_metadata_for_candidates(background_tasks: BackgroundTasks, re
 async def select_candidates_for_matching(background_tasks: BackgroundTasks, request: CandidateSuggestionsRequestBody, user_id: str = Depends(get_current_user_id)):
     """Select the candidates for matching."""
     logger.info("Select candidates for matching entry point")
-    background_tasks.add_task(candidate_analysis_service.select_candidates_for_matching, job_description=request.job_description)
+    background_tasks.add_task(candidate_analysis_service.select_candidates_for_matching, job_description=request.job_description, compensation_range=request.compensation_range, location=request.location)
     logger.info("Select candidates for matching exit point")
     return JSONResponse(
         content={"response": "Candidates selection has been initiated."}, status_code=200

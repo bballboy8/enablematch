@@ -537,6 +537,11 @@ async def generate_metadata_of_candidates(number_of_candidates: int, job_descrip
                 if not user_profile:
                     continue
 
+                candidates_current_location = user_profile.get("city", "Unknown") 
+                if user_profile.get("state", "Unknown") != "Unknown":
+                    candidates_current_location += ", " + user_profile.get("state", "Unknown")
+                if user_profile.get("country", "Unknown") != "Unknown":
+                    candidates_current_location += ", " + user_profile.get("country", "Unknown")
 
                 input_resume = await proxy_curl_service.get_key_value_concatenation(
                     user_profile
@@ -587,6 +592,7 @@ async def generate_metadata_of_candidates(number_of_candidates: int, job_descrip
                     "linkedin_profile": user.get("linkedin_profile", ""),
                     "relevant_experience_years": relevant_experience_years,
                     "senior_level_years": senior_level_years,
+                    "current_location": candidates_current_location,
                     **flattened_data,
                 }
                 await candidates_ai_generated_metadata_collection.insert_one(data)
@@ -614,14 +620,14 @@ async def generate_metadata_of_candidates(number_of_candidates: int, job_descrip
             "status_code": 500,
         }
     
-async def select_candidates_for_matching(job_description: str):
+async def select_candidates_for_matching(job_description: str, compensation_range: str, location: str):
     try:
         logger.info("Selecting candidates for matching")
         candidates_ai_generated_metadata_collection = db[constants.CANDIDATES_AI_GENERATED_METADATA_COLLECTION]
         existing_candidates = await candidates_ai_generated_metadata_collection.find({"final_score": {"$gte": 75}, "selected_for_matching": {"$exists": False}}).to_list(length=None)
         for candidate in existing_candidates:
             openai_client = OpenAIService()
-            response = await openai_client.select_candidates_for_matching(job_description, candidate["reasoning"])
+            response = await openai_client.select_candidates_for_matching(job_description, candidate["reasoning"], compensation_range, location, candidate["current_location"], candidate["compensation_range"])
             if response["status_code"] != 200:
                 continue
             print(response["response"])

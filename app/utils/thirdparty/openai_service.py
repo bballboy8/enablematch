@@ -353,7 +353,7 @@ class OpenAIService:
 
                 Notes:
                 • For the Compensation you will be given a range, we can have a 15% tolerance. Beyond the 15%, their ranking should drop significantly.
-                • For the Location you will be given a location, if its not under 100 miles of the location, their ranking should drop significantly, if its a remote location this condiation should not be applied.
+                • For the Location you will be given a location, if its not under 50 miles of the location, their ranking should drop significantly, if its a remote location this condiation should not be applied.
 
                 Hard caps and penalties (unchanged):
                 • No demonstrable leadership → final_score < 80.  
@@ -500,12 +500,15 @@ class OpenAIService:
             return {"message": f"Error generating experience years: {e}",
                     "status_code": 500}
 
-    async def select_candidates_for_matching(self, job_description: str, candidate_summary: str):
+    async def select_candidates_for_matching(self, job_description: str, candidate_summary: str, compensation_range: str, location: str, candidates_current_location: str, candidates_compensation_range: str):
         try:
             system_prompt = """
-            You are an expert recruiter specializing in analyzing candidates. You will be given a job description and a candidate summary. Your task is to select the suitable candidate for the job description. If based on positions experience required select the candidate who aligns with the experience required. If its either lower or higher than the experience required skip those, if its within the range select the candidate. You need to respond with yes or no.
+            You are an expert recruiter specializing in analyzing candidates. You will be given a job description and a candidate summary. Your task is to select the suitable candidate for the job description. If based on positions experience required select the candidate who aligns with the experience required.
+            You will be given a compensation range and a location. If the candidate's compensation range is not within the range of the jobs compensation range, skip that candidate.
+            If the candidate's location is not within the range of the jobs location, skip that candidate.
+            If its either lower or higher than the experience required skip those, if its within the range select the candidate. You need to respond with yes or no.
             """
-            prompt = f"Job Description: {job_description}\n\nCandidate Summary: {candidate_summary}"
+            prompt = f"Job Description: {job_description}\n\nCandidate Summary: {candidate_summary}\n\n Job Compensation Range: {compensation_range}\n\nJob Location: {location}\n\nCandidate Current Location: {candidates_current_location}\n\nCandidate Compensation Range: {candidates_compensation_range}"
             response = await self.get_gpt_response(system_prompt=system_prompt, prompt=prompt)
             return response
         except Exception as e:
