@@ -353,7 +353,7 @@ class OpenAIService:
 
                 Notes:
                 • For the Compensation you will be given a range, we can have a 15% tolerance. Beyond the 15%, their ranking should drop significantly.
-                • For the Location you will be given a location, if its not under 50 miles of the location, their ranking should drop significantly, if its a remote location this condiation should not be applied.
+                • For the Location you will be given a location, if its not under 50 miles of the location, their ranking should drop significantly, if its a remote location this condiation should not be applied. If its a remote location for the job description, this condition should not be applied.
 
                 Hard caps and penalties (unchanged):
                 • No demonstrable leadership → final_score < 80.  
