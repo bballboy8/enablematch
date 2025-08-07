@@ -486,11 +486,131 @@ async def fetch_candidates_for_matching_job_description(job_description):
     except Exception as e:
         logger.error(f"Failed to query Pinecone index: {e}")
         return {"status_code": 500, "response": str(e)}
+    
+
+JOB_DESCRIPTION = """
+ESSENTIAL REQUIREMENTS
+**Must-Haves**
+
+#### **Strategic Enablement Leadership**
+
+* Proven experience leading enablement at the *senior director level or higher* in a SaaS or tech-driven environment.
+* Ability to **build and evolve a modern enablement function**, not just run legacy programs.
+* Experience aligning enablement with business strategy and revenue outcomes (not just execution or training).
+
+#### **Gravitas & Stakeholder Management**
+
+* Strong **executive presence** and gravitas; able to say no diplomatically and push back when necessary.
+* Comfortable working with C-level execs and sales leadership; seen as a **trusted partner**, not a service provider.
+* Highly **politically savvy**; can navigate and influence in a complex or sometimes chaotic environment.
+
+#### **Emotional Intelligence (EQ)**
+
+* Strong interpersonal and EQ skills to **build trust and alliances** across departments (e.g., sales, marketing, ops).
+* Skilled at “horse trading” — enlisting others’ support without authority.
+* Can build credibility quickly and **deputize other teams** to help execute enablement programs.
+
+#### **Vision and Confidence**
+
+* Not just an executor — brings a **clear vision** for what “great enablement” looks like.
+* Confident owning and evolving the enablement roadmap without needing constant validation.
+* Able to operate independently and doesn't ask, *“Am I going to be fired today?”*
+
+#### **Modern Mindset & Enablement Philosophy**
+
+* Familiar with and supports **contemporary enablement practices** (e.g., experiential selling, demo-led discovery).
+* Understands enablement is more than just “KTC” (knowledge transfer calls); embraces **coaching, tooling, and behavior change.**
+* Able to champion or adopt methodologies like Force Management while being pragmatic and aligned with GTM strategy.
+
+#### **Curiosity & Tech Awareness**
+
+* Deep intellectual **curiosity** — particularly about how new tools and AI can enhance enablement.
+* Doesn't need to be a technologist, but must **understand, evaluate, and leverage enablement tech** effectively.
+
+#### **Team Leadership**
+
+* Has built or led teams; knows how to **structure enablement headcount** based on business stage and needs.
+* Team-oriented but **not cliquish** — can manage without creating a “sorority house” dynamic.
+* Can attract and retain strong enablement talent if Meg’s team leaves.
+
+#### **Integrity & Loyalty**
+
+* Doesn’t undermine leadership (e.g., calling external vendors behind leaders’ backs).
+* Collaborates openly and professionally — not passive-aggressive or defensive.
+
+---
+
+### 💡 **Nice-to-Haves**
+
+* Experience **working across international teams** (e.g., US and UK) and remote environments.
+* Familiarity with or prior use of tools like **Highspot** or methodologies like **Force Management**.
+* Prior experience rolling out **AI-based GTM products** or enablement strategies for technical audiences.
+* Has worked in **post-PLG to enterprise transitions**, where sales motion is evolving.
+* Comfortable in a **high-change, post-layoff, or turnaround environment**.
+* Ideally has worked at or been mentored by well-known enablement leaders (e.g., RingCentral lineage).
+
+
+
+JOB DESCRIPTION
+The Senior Director of Sales Enablement is responsible for leading the Sales Enablement
+function, ensuring the sales team is equipped with the training, resources, and support
+needed to perform at a high level. This role leads the development and execution of the
+sales learning strategy, working closely with Sales, Marketing, and Partner Channel teams to
+align content and training with business goals.
+Duties and Responsibilities
+Program Architecture
+● Translate business strategy into enablement priorities that directly support pipeline
+generation, deal velocity, and revenue growth
+● Design a multi-faceted learning experience that drives sales productivity, with clear
+ownership of success metrics to measure impact.
+● Ensure all content and programs are built to support data-driven decisions, using
+relevant sales metrics to evaluate effectiveness.
+● Support organizational change and sales transformation initiatives through
+enablement best practices and using the Command of the Message / Command of
+the Sale Frameworks
+Program Execution
+● Lead the delivery of training through various formats including in-person sessions,
+virtual classrooms, eLearning, and live webinars.
+● Develop and manage core enablement initiatives such as new hire sales onboarding
+and ongoing training programmes.
+● Manage a communication cadence to the field teams for continuous knowledge
+sharing.
+● Create a coaching culture through programmatic activities, tools, partnership with
+sales leadership and AI technology to create a learning environment focused on
+continuous improvement.
+● Gather input from sales leaders and reps to prioritise enablement focus areas and
+adjust content accordingly.
+matillion.com
+Program Evolution
+● Lead the evaluation and selection of modern future - proof Sales enablement
+platforms.
+● Collaborate with content owners across the business to keep onboarding and
+enablement materials relevant and aligned.
+● Stay current with industry best practices in sales enablement and apply insights to
+continuously improve the program.
+Person Specification
+Essential Experience
+● Sales Enablement leadership in tech, ideally SaaS
+● Track record in designing and delivering enablement and training programmes
+● Experience leading and developing high-performing teams
+● Strong background in sales training and go-to-market enablement
+● Experience using AI as a key enablement strategy
+● Experience using Command of the Message / Command of the Sales programs
+● Proficient in using enablement tools
+Skills and Attributes
+● Innovative problem-solver with a change-driving mindset
+● Strong business acumen and cross-functional understanding
+● Detail-oriented, organised, and able to manage competing priorities
+● Strategic and adaptable in a fast-paced environment
+● Committed to continuous improvement and best practice delivery
+
+"""
 
 
 async def generate_metadata_of_candidates(number_of_candidates: int, job_description: str, compensation_range: str, location: str):
     try:
         logger.info("Fetching target candidates")
+        job_description = JOB_DESCRIPTION
         openai_client = OpenAIService()
         salesforce_users_collection = db[constants.SALESFORCE_USERS_COLLECTION]
         candidates_ai_generated_metadata_collection = db[constants.CANDIDATES_AI_GENERATED_METADATA_COLLECTION]
@@ -623,6 +743,7 @@ async def generate_metadata_of_candidates(number_of_candidates: int, job_descrip
 async def select_candidates_for_matching(job_description: str, compensation_range: str, location: str):
     try:
         logger.info("Selecting candidates for matching")
+        job_description = JOB_DESCRIPTION
         candidates_ai_generated_metadata_collection = db[constants.CANDIDATES_AI_GENERATED_METADATA_COLLECTION]
         existing_candidates = await candidates_ai_generated_metadata_collection.find({"final_score": {"$gte": 75}, "selected_for_matching": {"$exists": False}}).to_list(length=None)
         for candidate in existing_candidates:
