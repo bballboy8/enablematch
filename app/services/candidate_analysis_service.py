@@ -711,7 +711,7 @@ async def generate_metadata_of_candidates(number_of_candidates: int, job_descrip
                     "salesforce_id": user.get("Id"),
                     "email": user.get("PersonEmail"),
                     "user_id": str(user.get("_id", "")),
-                    "linkedin_profile": user.get("linkedin_profile", ""),
+                    "linkedin_profile": user.get("linkedin_url", ""),
                     "relevant_experience_years": relevant_experience_years,
                     "senior_level_years": senior_level_years,
                     "current_location": candidates_current_location,
