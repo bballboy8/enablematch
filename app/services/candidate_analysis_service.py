@@ -656,8 +656,10 @@ async def generate_metadata_of_candidates(number_of_candidates: int, job_descrip
                 )
                 if not user_profile:
                     continue
-
-                candidates_current_location = user_profile.get("city", "Unknown") 
+                
+                candidates_current_location = ""
+                if user_profile.get("city"):
+                    candidates_current_location = user_profile.get("city", "") 
                 if user_profile.get("state"):
                     candidates_current_location += ", " + user_profile.get("state")
                 if user_profile.get("country"):
