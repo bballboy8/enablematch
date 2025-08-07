@@ -658,10 +658,10 @@ async def generate_metadata_of_candidates(number_of_candidates: int, job_descrip
                     continue
 
                 candidates_current_location = user_profile.get("city", "Unknown") 
-                if user_profile.get("state", "Unknown") != "Unknown":
-                    candidates_current_location += ", " + user_profile.get("state", "Unknown")
-                if user_profile.get("country", "Unknown") != "Unknown":
-                    candidates_current_location += ", " + user_profile.get("country", "Unknown")
+                if user_profile.get("state"):
+                    candidates_current_location += ", " + user_profile.get("state")
+                if user_profile.get("country"):
+                    candidates_current_location += ", " + user_profile.get("country")
 
                 input_resume = await proxy_curl_service.get_key_value_concatenation(
                     user_profile
