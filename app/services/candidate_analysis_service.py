@@ -489,120 +489,27 @@ async def fetch_candidates_for_matching_job_description(job_description):
     
 
 JOB_DESCRIPTION = """
-ESSENTIAL REQUIREMENTS
-**Must-Haves**
+    The Director, Sales Programs role could be the right fit for you at Salesforce! We are currently looking for high-energy, driven, top talent with a deep knowledge of effective tactics and strategies to grow pipeline and revenue. The ideal candidate has an analytical mind with the ability to act as a trusted adviser and business partner to senior executive leadership, while working cross-functionally. The ideal candidate must be comfortable analyzing complex data sets, adept at prescribing and prioritizing solutions to meet business problems, and is comfortable presenting to large audiences. This role combines the creative process of designing prescriptive programs and strategies, with the “business end” of operationalizing these programs with field teams to ensure they are executed and produce results.
+    Salesforce offers a fast-paced, innovative environment where you will be empowered to design and execute programs that drive business results. Our goal is to build an organization of smart, ambitious strategists who are committed to our mission and focused on winning, but able to balance this with a respectful, healthy environment and lifestyle. At Salesforce, integrity and reliability are as important as talent and effort.
+    
+    Responsibilities:
+    You will lead a team of Sales Program Managers. You will be collaborating with Sales Leaders, Corporate Marketing, Product Marketing, Data Science Teams, Sales Operations, and Sales Enablement to design and execute custom sales programs that drive results inside our most strategic accounts. Ultimately delivering prescriptive programs quarterly to senior leadership, your programs will be carried out by teams of sales executives across our regulated industry verticals.
 
-#### **Strategic Enablement Leadership**
+    Required Skills/Experience
+    - 10+ years of experience in Sales, Sales Leadership, Sales Strategy, Sales Programs, or Sales Operations.
+    - Experience designing (or influencing the design) of revenue-producing sales campaigns and/or programs.
+    - Experience drawing actionable insights from data sets in their most common forms (Excel, Business Objects, Salesforce.com, etc.)
+    - Mastery of effective enterprise sales strategies (seed, grow, advise)
+    - Ability to design prescriptive programs and strategies, and “operationalizing” them
+    - Ability to work collaboratively with sales leaders, sales strategy, data science, corporate marketing, product marketing, industry advisors, and enablement
+    - Highly skilled in Salesforce reporting/dashboards, Einstein Analytics, Tableau, and excel
+    - Exceptional written and verbal communication skills as well as public speaking proficiency; create and deliver executive-level presentations
+    - Operational rigor and track record of cross-stakeholder program management and execution
+    - Experience running tactical or strategic sales enablement
+    - Ability to succeed in a collaborative, startup fast-paced environment
+    - Established credibility and trust with senior management or boards on business strategy—completely comfortable operating at that level highly desired.
 
-* Proven experience leading enablement at the *senior director level or higher* in a SaaS or tech-driven environment.
-* Ability to **build and evolve a modern enablement function**, not just run legacy programs.
-* Experience aligning enablement with business strategy and revenue outcomes (not just execution or training).
-
-#### **Gravitas & Stakeholder Management**
-
-* Strong **executive presence** and gravitas; able to say no diplomatically and push back when necessary.
-* Comfortable working with C-level execs and sales leadership; seen as a **trusted partner**, not a service provider.
-* Highly **politically savvy**; can navigate and influence in a complex or sometimes chaotic environment.
-
-#### **Emotional Intelligence (EQ)**
-
-* Strong interpersonal and EQ skills to **build trust and alliances** across departments (e.g., sales, marketing, ops).
-* Skilled at “horse trading” — enlisting others’ support without authority.
-* Can build credibility quickly and **deputize other teams** to help execute enablement programs.
-
-#### **Vision and Confidence**
-
-* Not just an executor — brings a **clear vision** for what “great enablement” looks like.
-* Confident owning and evolving the enablement roadmap without needing constant validation.
-* Able to operate independently and doesn't ask, *“Am I going to be fired today?”*
-
-#### **Modern Mindset & Enablement Philosophy**
-
-* Familiar with and supports **contemporary enablement practices** (e.g., experiential selling, demo-led discovery).
-* Understands enablement is more than just “KTC” (knowledge transfer calls); embraces **coaching, tooling, and behavior change.**
-* Able to champion or adopt methodologies like Force Management while being pragmatic and aligned with GTM strategy.
-
-#### **Curiosity & Tech Awareness**
-
-* Deep intellectual **curiosity** — particularly about how new tools and AI can enhance enablement.
-* Doesn't need to be a technologist, but must **understand, evaluate, and leverage enablement tech** effectively.
-
-#### **Team Leadership**
-
-* Has built or led teams; knows how to **structure enablement headcount** based on business stage and needs.
-* Team-oriented but **not cliquish** — can manage without creating a “sorority house” dynamic.
-* Can attract and retain strong enablement talent if Meg’s team leaves.
-
-#### **Integrity & Loyalty**
-
-* Doesn’t undermine leadership (e.g., calling external vendors behind leaders’ backs).
-* Collaborates openly and professionally — not passive-aggressive or defensive.
-
----
-
-### 💡 **Nice-to-Haves**
-
-* Experience **working across international teams** (e.g., US and UK) and remote environments.
-* Familiarity with or prior use of tools like **Highspot** or methodologies like **Force Management**.
-* Prior experience rolling out **AI-based GTM products** or enablement strategies for technical audiences.
-* Has worked in **post-PLG to enterprise transitions**, where sales motion is evolving.
-* Comfortable in a **high-change, post-layoff, or turnaround environment**.
-* Ideally has worked at or been mentored by well-known enablement leaders (e.g., RingCentral lineage).
-
-
-
-JOB DESCRIPTION
-The Senior Director of Sales Enablement is responsible for leading the Sales Enablement
-function, ensuring the sales team is equipped with the training, resources, and support
-needed to perform at a high level. This role leads the development and execution of the
-sales learning strategy, working closely with Sales, Marketing, and Partner Channel teams to
-align content and training with business goals.
-Duties and Responsibilities
-Program Architecture
-● Translate business strategy into enablement priorities that directly support pipeline
-generation, deal velocity, and revenue growth
-● Design a multi-faceted learning experience that drives sales productivity, with clear
-ownership of success metrics to measure impact.
-● Ensure all content and programs are built to support data-driven decisions, using
-relevant sales metrics to evaluate effectiveness.
-● Support organizational change and sales transformation initiatives through
-enablement best practices and using the Command of the Message / Command of
-the Sale Frameworks
-Program Execution
-● Lead the delivery of training through various formats including in-person sessions,
-virtual classrooms, eLearning, and live webinars.
-● Develop and manage core enablement initiatives such as new hire sales onboarding
-and ongoing training programmes.
-● Manage a communication cadence to the field teams for continuous knowledge
-sharing.
-● Create a coaching culture through programmatic activities, tools, partnership with
-sales leadership and AI technology to create a learning environment focused on
-continuous improvement.
-● Gather input from sales leaders and reps to prioritise enablement focus areas and
-adjust content accordingly.
-matillion.com
-Program Evolution
-● Lead the evaluation and selection of modern future - proof Sales enablement
-platforms.
-● Collaborate with content owners across the business to keep onboarding and
-enablement materials relevant and aligned.
-● Stay current with industry best practices in sales enablement and apply insights to
-continuously improve the program.
-Person Specification
-Essential Experience
-● Sales Enablement leadership in tech, ideally SaaS
-● Track record in designing and delivering enablement and training programmes
-● Experience leading and developing high-performing teams
-● Strong background in sales training and go-to-market enablement
-● Experience using AI as a key enablement strategy
-● Experience using Command of the Message / Command of the Sales programs
-● Proficient in using enablement tools
-Skills and Attributes
-● Innovative problem-solver with a change-driving mindset
-● Strong business acumen and cross-functional understanding
-● Detail-oriented, organised, and able to manage competing priorities
-● Strategic and adaptable in a fast-paced environment
-● Committed to continuous improvement and best practice delivery
+    For roles in San Francisco and Los Angeles: Pursuant to the San Francisco Fair Chance Ordinance and the Los Angeles Fair Chance Initiative for Hiring, Salesforce will consider for employment qualified applicants with arrest and conviction records.
 
 """
 
