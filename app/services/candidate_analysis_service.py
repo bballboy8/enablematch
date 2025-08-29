@@ -491,7 +491,7 @@ async def fetch_candidates_for_matching_job_description(job_description):
 JOB_DESCRIPTION = """
     The Director, Sales Programs role could be the right fit for you at Salesforce! We are currently looking for high-energy, driven, top talent with a deep knowledge of effective tactics and strategies to grow pipeline and revenue. The ideal candidate has an analytical mind with the ability to act as a trusted adviser and business partner to senior executive leadership, while working cross-functionally. The ideal candidate must be comfortable analyzing complex data sets, adept at prescribing and prioritizing solutions to meet business problems, and is comfortable presenting to large audiences. This role combines the creative process of designing prescriptive programs and strategies, with the “business end” of operationalizing these programs with field teams to ensure they are executed and produce results.
     Salesforce offers a fast-paced, innovative environment where you will be empowered to design and execute programs that drive business results. Our goal is to build an organization of smart, ambitious strategists who are committed to our mission and focused on winning, but able to balance this with a respectful, healthy environment and lifestyle. At Salesforce, integrity and reliability are as important as talent and effort.
-    
+
     Responsibilities:
     You will lead a team of Sales Program Managers. You will be collaborating with Sales Leaders, Corporate Marketing, Product Marketing, Data Science Teams, Sales Operations, and Sales Enablement to design and execute custom sales programs that drive results inside our most strategic accounts. Ultimately delivering prescriptive programs quarterly to senior leadership, your programs will be carried out by teams of sales executives across our regulated industry verticals.
 
@@ -626,6 +626,7 @@ async def generate_metadata_of_candidates(number_of_candidates: int, job_descrip
                 }
                 await candidates_ai_generated_metadata_collection.insert_one(data)
 
+                logger.info(f"Remaining candidates: {len(users) - i - 1}")
                 target_candidates.append(
                     data
                 )
@@ -637,6 +638,8 @@ async def generate_metadata_of_candidates(number_of_candidates: int, job_descrip
                 continue
 
         logger.info(f"Metadata generated for {len(target_candidates)} candidates.")
+
+        await select_candidates_for_matching(job_description, compensation_range, location)
 
         return {
             "response": f"Metadata generated for {len(target_candidates)} candidates.",
