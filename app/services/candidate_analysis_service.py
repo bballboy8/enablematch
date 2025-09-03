@@ -572,6 +572,8 @@ async def generate_metadata_of_candidates(number_of_candidates: int, job_descrip
                 if user_profile.get("country"):
                     candidates_current_location += ", " + user_profile.get("country")
 
+                candidates_current_ote = user.get("Current_OTE__c", "")
+
                 input_resume = await proxy_curl_service.get_key_value_concatenation(
                     user_profile
                 )
@@ -586,7 +588,7 @@ async def generate_metadata_of_candidates(number_of_candidates: int, job_descrip
 
                 print(relevant_experience_years, senior_level_years)
 
-                input_resume = f"Total Relevant Experience: {relevant_experience_years} years, Senior Level Experience: {senior_level_years} years\n{input_resume}"
+                input_resume = f"Total Relevant Experience: {relevant_experience_years} years, Senior Level Experience: {senior_level_years} years\n{input_resume} Candidates Current Compenasation: {candidates_current_ote}"
 
                 recruiter_provided_summary = f"Recruiter provided summary: {user.get('Summary_of_Candidate__c', '')}\n\n"
 
@@ -618,6 +620,7 @@ async def generate_metadata_of_candidates(number_of_candidates: int, job_descrip
                     "salesforce_id": user.get("Id"),
                     "email": user.get("PersonEmail"),
                     "user_id": str(user.get("_id", "")),
+                    "current_compensation": candidates_current_ote,
                     "linkedin_profile": user.get("linkedin_url", ""),
                     "relevant_experience_years": relevant_experience_years,
                     "senior_level_years": senior_level_years,
