@@ -276,7 +276,7 @@ class OpenAIService:
                 "final_score": <int 0-100>,
                 "reasoning": "<100-word explanation referencing JD, resume, Gong, recruiter summary>",
                 "category_wise_score": "strategic business impact: N/20, sales enablement expertise: N/20, leadership execution ability: N/20, cultural fit: N/20, compensation & logistics inferring: N/20",
-                "fit": "yes or no if final_score is greater than 90"
+                "fit": "yes or no if final_score is greater than 75"
             },
             "compensation_logistics": {
                 "compensation_range": <int or null>,
