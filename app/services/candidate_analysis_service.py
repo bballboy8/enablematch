@@ -16,6 +16,9 @@ from datetime import datetime
 import random
 from typing import Dict, Any
 import re
+import pytz
+
+search_triggers_collection = db[constants.SEARCH_TRIGGERS_COLLECTION]
 
 async def analyze_database_candidate(job_description, db_id):
     try:
@@ -488,39 +491,35 @@ async def fetch_candidates_for_matching_job_description(job_description):
         return {"status_code": 500, "response": str(e)}
     
 
-JOB_DESCRIPTION = """
-    The Director, Sales Programs role could be the right fit for you at Salesforce! We are currently looking for high-energy, driven, top talent with a deep knowledge of effective tactics and strategies to grow pipeline and revenue. The ideal candidate has an analytical mind with the ability to act as a trusted adviser and business partner to senior executive leadership, while working cross-functionally. The ideal candidate must be comfortable analyzing complex data sets, adept at prescribing and prioritizing solutions to meet business problems, and is comfortable presenting to large audiences. This role combines the creative process of designing prescriptive programs and strategies, with the “business end” of operationalizing these programs with field teams to ensure they are executed and produce results.
-    Salesforce offers a fast-paced, innovative environment where you will be empowered to design and execute programs that drive business results. Our goal is to build an organization of smart, ambitious strategists who are committed to our mission and focused on winning, but able to balance this with a respectful, healthy environment and lifestyle. At Salesforce, integrity and reliability are as important as talent and effort.
 
-    Responsibilities:
-    You will lead a team of Sales Program Managers. You will be collaborating with Sales Leaders, Corporate Marketing, Product Marketing, Data Science Teams, Sales Operations, and Sales Enablement to design and execute custom sales programs that drive results inside our most strategic accounts. Ultimately delivering prescriptive programs quarterly to senior leadership, your programs will be carried out by teams of sales executives across our regulated industry verticals.
-
-    Required Skills/Experience
-    - 10+ years of experience in Sales, Sales Leadership, Sales Strategy, Sales Programs, or Sales Operations.
-    - Experience designing (or influencing the design) of revenue-producing sales campaigns and/or programs.
-    - Experience drawing actionable insights from data sets in their most common forms (Excel, Business Objects, Salesforce.com, etc.)
-    - Mastery of effective enterprise sales strategies (seed, grow, advise)
-    - Ability to design prescriptive programs and strategies, and “operationalizing” them
-    - Ability to work collaboratively with sales leaders, sales strategy, data science, corporate marketing, product marketing, industry advisors, and enablement
-    - Highly skilled in Salesforce reporting/dashboards, Einstein Analytics, Tableau, and excel
-    - Exceptional written and verbal communication skills as well as public speaking proficiency; create and deliver executive-level presentations
-    - Operational rigor and track record of cross-stakeholder program management and execution
-    - Experience running tactical or strategic sales enablement
-    - Ability to succeed in a collaborative, startup fast-paced environment
-    - Established credibility and trust with senior management or boards on business strategy—completely comfortable operating at that level highly desired.
-
-    For roles in San Francisco and Los Angeles: Pursuant to the San Francisco Fair Chance Ordinance and the Los Angeles Fair Chance Initiative for Hiring, Salesforce will consider for employment qualified applicants with arrest and conviction records.
-
-"""
-
-
-async def generate_metadata_of_candidates(number_of_candidates: int, job_description: str, compensation_range: str, location: str):
+async def generate_metadata_of_candidates(job_description: str, compensation_range: str, location: str):
     try:
         logger.info("Fetching target candidates")
-        job_description = JOB_DESCRIPTION
         openai_client = OpenAIService()
         salesforce_users_collection = db[constants.SALESFORCE_USERS_COLLECTION]
         candidates_ai_generated_metadata_collection = db[constants.CANDIDATES_AI_GENERATED_METADATA_COLLECTION]
+
+
+        if await search_triggers_collection.find_one({"status": "in_progress"}):
+            return {
+                "response": "Another metadata generation is in progress. Please try again later.",
+                "status_code": 400,
+            }
+        
+        inital_data = {
+            "job_description": job_description,
+            "compensation_range": compensation_range,
+            "location": location,
+            "status": "in_progress",
+            "created_at": datetime.now(pytz.UTC)
+        }
+
+        search_trigger = await search_triggers_collection.insert_one(inital_data)
+        search_trigger_id = str(search_trigger.inserted_id)
+
+        search_data = {
+            "trigger_id": search_trigger_id
+        }
 
         users_gong_transcript_collection = db[
             constants.USERS_GONG_TRANSCRIPT_COLLECTION
@@ -534,7 +533,7 @@ async def generate_metadata_of_candidates(number_of_candidates: int, job_descrip
                 "gong_transcript_ids": {"$exists": True},
                 "linkedin_profile": {"$exists": True},
             }
-        ).to_list(length=number_of_candidates)
+        ).to_list(length=None)
 
         if not users:
             return {
@@ -543,10 +542,21 @@ async def generate_metadata_of_candidates(number_of_candidates: int, job_descrip
             }
         logger.info(f"Total users found: {len(users)}")
 
+        search_data["total_users"] = len(users)
+
+        await search_triggers_collection.update_one({"_id": ObjectId(search_trigger_id)}, {"$set": search_data})
+
         target_candidates = []
         for i, user in enumerate(users):
             if await candidates_ai_generated_metadata_collection.find_one({"user_id": str(user.get("_id", ""))}):
                 continue
+
+            if await search_triggers_collection.find_one({"_id": ObjectId(search_trigger_id), "status": "stopped"}):
+                logger.info("Metadata generation stopped by user.")
+                return {
+                    "response": "Metadata generation stopped by user.",
+                    "status_code": 200,
+                }
 
             try:
                 gong_transcript_ids = user.get("gong_transcript_ids", [])
@@ -616,6 +626,7 @@ async def generate_metadata_of_candidates(number_of_candidates: int, job_descrip
                         flattened_data[key] = [item.lower() for item in value]
 
                 data = {
+                    "trigger_id": search_trigger_id,
                     "name": user.get("Name"),
                     "salesforce_id": user.get("Id"),
                     "email": user.get("PersonEmail"),
@@ -642,7 +653,9 @@ async def generate_metadata_of_candidates(number_of_candidates: int, job_descrip
 
         logger.info(f"Metadata generated for {len(target_candidates)} candidates.")
 
-        await select_candidates_for_matching(job_description, compensation_range, location)
+        await search_triggers_collection.update_one({"_id": ObjectId(search_trigger_id)}, {"$set": {"metadata_generated_for": len(target_candidates), "metadata_generation_status_completed": "completed"}})
+
+        await select_candidates_for_matching(job_description, compensation_range, location, search_trigger_id)
 
         return {
             "response": f"Metadata generated for {len(target_candidates)} candidates.",
@@ -655,13 +668,22 @@ async def generate_metadata_of_candidates(number_of_candidates: int, job_descrip
             "status_code": 500,
         }
     
-async def select_candidates_for_matching(job_description: str, compensation_range: str, location: str):
+async def select_candidates_for_matching(job_description: str, compensation_range: str, location: str, trigger_id: any=None):
     try:
         logger.info("Selecting candidates for matching")
-        job_description = JOB_DESCRIPTION
         candidates_ai_generated_metadata_collection = db[constants.CANDIDATES_AI_GENERATED_METADATA_COLLECTION]
         existing_candidates = await candidates_ai_generated_metadata_collection.find({"final_score": {"$gte": 75}, "fit": "yes", "selected_for_matching": {"$exists": False}}).to_list(length=None)
+
+        logger.info(f"Total Fit Candidates found: {len(existing_candidates)}")
+
+        successful_selections = 0
         for candidate in existing_candidates:
+            if await search_triggers_collection.find_one({"_id": ObjectId(trigger_id), "status": "stopped"}):
+                logger.info("Candidate selection stopped by user.")
+                return {
+                    "response": "Candidate selection stopped by user.",
+                    "status_code": 200,
+                }
             openai_client = OpenAIService()
             response = await openai_client.select_candidates_for_matching(job_description, candidate["reasoning"], compensation_range, location, candidate["current_location"], candidate["compensation_range"])
             if response["status_code"] != 200:
@@ -670,6 +692,11 @@ async def select_candidates_for_matching(job_description: str, compensation_rang
             if str(response["response"]).lower() == "yes":
                 await candidates_ai_generated_metadata_collection.update_one({"_id": candidate["_id"]}, {"$set": {"selected_for_matching": True}})
                 logger.info(f"Selected candidate: {candidate['name']}")
+                successful_selections += 1
+
+
+        logger.info(f"Total candidates selected for matching: {successful_selections}")
+        await db[constants.SEARCH_TRIGGERS_COLLECTION].update_one({"_id": ObjectId(trigger_id)}, {"$set": {"successfull_selections": successful_selections}})
     
 
         return {
@@ -677,6 +704,29 @@ async def select_candidates_for_matching(job_description: str, compensation_rang
         }
     except Exception as e:
         logger.error(f"Error in selecting candidates for matching: {e}")
+
+async def stop_metadata_generation_process(trigger_id: str):
+    try:
+        logger.info(f"Stopping metadata generation process for trigger_id: {trigger_id}")
+        # Check if the trigger_id exists
+        trigger = await db[constants.SEARCH_TRIGGERS_COLLECTION].find_one({"_id": ObjectId(trigger_id)})
+        if not trigger:
+            return {
+                "response": "Trigger ID not found.",
+                "status_code": 404,
+            }
+        
+        await db[constants.SEARCH_TRIGGERS_COLLECTION].update_one({"_id": ObjectId(trigger_id)}, {"$set": {"status": "stopped"}})
+        return {
+            "response": "Metadata generation stopped successfully.",
+            "status_code": 200,
+        }
+    except Exception as e:
+        logger.error(f"Error in stopping metadata generation: {e}")
+        return {
+            "response": f"An error occurred while stopping metadata generation: {e}",
+            "status_code": 500,
+        }
 
 def build_mongo_filter(input_dict: Dict[str, Any]) -> Dict:
     filter_criteria = {}

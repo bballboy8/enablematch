@@ -140,6 +140,16 @@ async def generate_metadata_for_candidates(background_tasks: BackgroundTasks, re
         content={"response": "Metadata generation has been initiated."}, status_code=200
     )
 
+@router.post("/stop-metadata-generation-process")
+async def stop_metadata_generation_process(trigger_id:str, user_id: str = Depends(get_current_user_id)):
+    """Stop the metadata generation process."""
+    logger.info("Stop metadata generation process entry point")
+    response = await candidate_analysis_service.stop_metadata_generation_process(trigger_id)
+    logger.info("Stop metadata generation process exit point")
+    return JSONResponse(
+        content={"response": response}, status_code=200
+    )
+
 @router.post("/select-candidates-for-matching")
 async def select_candidates_for_matching(background_tasks: BackgroundTasks, request: CandidateSuggestionsRequestBody, user_id: str = Depends(get_current_user_id)):
     """Select the candidates for matching."""
