@@ -518,7 +518,6 @@ async def generate_metadata_of_candidates(job_description: str, compensation_ran
         search_trigger_id = str(search_trigger.inserted_id)
 
         search_data = {
-            "trigger_id": search_trigger_id
         }
 
         users_gong_transcript_collection = db[
@@ -639,6 +638,7 @@ async def generate_metadata_of_candidates(job_description: str, compensation_ran
                     **flattened_data,
                 }
                 await candidates_ai_generated_metadata_collection.insert_one(data)
+                await search_triggers_collection.update_one({"_id": ObjectId(search_trigger_id)}, {"$set": {"metadata_generated_for": len(target_candidates) + 1}})
 
                 logger.info(f"Remaining candidates: {len(users) - i - 1}")
                 target_candidates.append(
@@ -652,8 +652,6 @@ async def generate_metadata_of_candidates(job_description: str, compensation_ran
                 continue
 
         logger.info(f"Metadata generated for {len(target_candidates)} candidates.")
-
-        await search_triggers_collection.update_one({"_id": ObjectId(search_trigger_id)}, {"$set": {"metadata_generated_for": len(target_candidates), "metadata_generation_status_completed": "completed"}})
 
         await select_candidates_for_matching(job_description, compensation_range, location, search_trigger_id)
 
@@ -693,11 +691,10 @@ async def select_candidates_for_matching(job_description: str, compensation_rang
                 await candidates_ai_generated_metadata_collection.update_one({"_id": candidate["_id"]}, {"$set": {"selected_for_matching": True}})
                 logger.info(f"Selected candidate: {candidate['name']}")
                 successful_selections += 1
+                await db[constants.SEARCH_TRIGGERS_COLLECTION].update_one({"_id": ObjectId(trigger_id)}, {"$set": {"successfull_selections": successful_selections}})
 
 
-        logger.info(f"Total candidates selected for matching: {successful_selections}")
-        await db[constants.SEARCH_TRIGGERS_COLLECTION].update_one({"_id": ObjectId(trigger_id)}, {"$set": {"successfull_selections": successful_selections}})
-    
+        logger.info(f"Total candidates selected for matching: {successful_selections}")   
 
         return {
             "status_code": 200,
