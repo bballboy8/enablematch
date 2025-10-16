@@ -146,7 +146,7 @@ async def stop_metadata_generation_process(trigger_id:str, user_id: str = Depend
     response = await candidate_analysis_service.stop_metadata_generation_process(trigger_id)
     logger.info("Stop metadata generation process exit point")
     return JSONResponse(
-        content={"response": response}, status_code=200
+        content=response["response"], status_code=200
     )
 
 @router.get("/list-all-metadata-generation-process")
