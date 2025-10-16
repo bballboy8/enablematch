@@ -547,7 +547,8 @@ async def generate_metadata_of_candidates(job_description: str, compensation_ran
 
         target_candidates = []
         for i, user in enumerate(users):
-            if await candidates_ai_generated_metadata_collection.find_one({"user_id": str(user.get("_id", ""))}):
+            if await candidates_ai_generated_metadata_collection.find_one({"user_id": str(user.get("_id", "")), "trigger_id": search_trigger_id}):
+                logger.info(f"Metadata already generated for user {user.get('_id', '')}, skipping.")
                 continue
 
             if await search_triggers_collection.find_one({"_id": ObjectId(search_trigger_id), "status": "stopped"}):
