@@ -705,6 +705,35 @@ async def select_candidates_for_matching(job_description: str, compensation_rang
     except Exception as e:
         logger.error(f"Error in selecting candidates for matching: {e}")
 
+async def list_all_search_triggers(page:int =1, page_size:int=10):
+    try:
+        logger.info("Listing all search triggers")
+        total_triggers = await search_triggers_collection.count_documents({})
+        triggers = await search_triggers_collection.find({}).sort("created_at", -1).skip((page - 1) * page_size).limit(page_size).to_list(length=page_size)
+        for trigger in triggers:
+            trigger["id"] = str(trigger.pop("_id"))
+            # convert to est
+            trigger["created_at"] = trigger["created_at"].astimezone(pytz.timezone("US/Eastern")).strftime("%Y-%m-%d %H:%M:%S")
+
+            if "metadata_generated_for" not in trigger:
+                trigger["metadata_generated_for"] = 0
+            if "successfull_selections" not in trigger:
+                trigger["successfull_selections"] = 0
+
+        return {
+            "response": {
+                "total_triggers": total_triggers,
+                "triggers": triggers
+            },
+            "status_code": 200,
+        }
+    except Exception as e:
+        logger.error(f"Error in listing search triggers: {e}")
+        return {
+            "response": {"message": f"An error occurred while listing search triggers: {e}"},
+            "status_code": 500,
+        }
+
 async def stop_metadata_generation_process(trigger_id: str):
     try:
         logger.info(f"Stopping metadata generation process for trigger_id: {trigger_id}")

@@ -149,6 +149,16 @@ async def stop_metadata_generation_process(trigger_id:str, user_id: str = Depend
         content={"response": response}, status_code=200
     )
 
+@router.get("/list-all-metadata-generation-process")
+async def list_all_metadata_generation_process(page: int = 1, page_size: int = 10, user_id: str = Depends(get_current_user_id)):
+    """List all metadata generation processes."""
+    logger.info("List all metadata generation processes entry point")
+    response = await candidate_analysis_service.list_all_search_triggers(page=page, page_size=page_size)
+    logger.info("List all metadata generation processes exit point")
+    return JSONResponse(
+        content=response["response"], status_code=response["status_code"]
+    )
+
 @router.post("/select-candidates-for-matching")
 async def select_candidates_for_matching(background_tasks: BackgroundTasks, request: CandidateSuggestionsRequestBody, user_id: str = Depends(get_current_user_id)):
     """Select the candidates for matching."""
