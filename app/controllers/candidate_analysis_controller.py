@@ -124,7 +124,6 @@ async def get_candidate_suggestions_from_db(request: CandidateSuggestionsRequest
     )
 
 class GenerateMetadataForCandidatesRequestBody(BaseModel):
-    number_of_candidates: int
     job_description: str
     compensation_range: str
     location: str
@@ -134,7 +133,7 @@ class GenerateMetadataForCandidatesRequestBody(BaseModel):
 async def generate_metadata_for_candidates(background_tasks: BackgroundTasks, request: GenerateMetadataForCandidatesRequestBody, user_id: str = Depends(get_current_user_id)):
     """Generate metadata for the candidates."""
     logger.info("Generate metadata for candidates entry point")
-    background_tasks.add_task(candidate_analysis_service.generate_metadata_of_candidates, number_of_candidates=request.number_of_candidates, job_description=request.job_description, compensation_range=request.compensation_range, location=request.location)
+    background_tasks.add_task(candidate_analysis_service.generate_metadata_of_candidates, job_description=request.job_description, compensation_range=request.compensation_range, location=request.location)
     logger.info("Generate metadata for candidates exit point")
     return JSONResponse(
         content={"response": "Metadata generation has been initiated."}, status_code=200
