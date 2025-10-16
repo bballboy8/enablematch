@@ -747,13 +747,13 @@ async def stop_metadata_generation_process(trigger_id: str):
         
         await db[constants.SEARCH_TRIGGERS_COLLECTION].update_one({"_id": ObjectId(trigger_id)}, {"$set": {"status": "stopped"}})
         return {
-            "response": "Metadata generation stopped successfully.",
+            "response": {"message": "Metadata generation stopped successfully."},
             "status_code": 200,
         }
     except Exception as e:
         logger.error(f"Error in stopping metadata generation: {e}")
         return {
-            "response": f"An error occurred while stopping metadata generation: {e}",
+            "response": {"message": f"An error occurred while stopping metadata generation: {e}"},
             "status_code": 500,
         }
 
