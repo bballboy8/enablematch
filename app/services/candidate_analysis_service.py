@@ -948,3 +948,38 @@ async def get_the_top_candidate_for_jd(job_description: str):
         traceback.print_exc()
         logger.error(f"Failed to process candidates: {e}")
         return {"status_code": 500, "response": str(e)}
+
+
+
+async def get_current_salesforce_candidates(page: int = 1, page_size: int = 10):
+    try:
+        logger.info("Fetching current Salesforce candidates")
+        salesforce_users_collection = db[constants.SALESFORCE_USERS_COLLECTION]
+        total_candidates = await salesforce_users_collection.count_documents({})
+        candidates = await salesforce_users_collection.find({}).skip((page - 1) * page_size).limit(page_size).to_list(length=page_size)
+        cooked_candidates = []
+        for candidate in candidates:
+            cooked_candidates.append({
+                "id": candidate.get("Id", ""),
+                "current_ote": candidate.get("Current_OTE__c", ""),
+                "name": candidate.get("Name", ""),
+                "email": candidate.get("PersonEmail", ""),
+                "linkedin_url": candidate.get("linkedin_url", ""),
+                "gong_conversation_count": candidate.get("Gong__Gong_Count__c", 0),
+                "summary_of_candidate": candidate.get("Summary_of_Candidate__c", ""),
+            })
+        logger.info("Current Salesforce candidates fetched successfully.")
+        print(cooked_candidates)
+        return {
+            "response": {
+                "total_candidates": total_candidates,
+                "candidates": cooked_candidates
+            },
+            "status_code": 200,
+        }
+    except Exception as e:
+        logger.error(f"Error in fetching current Salesforce candidates: {e}")
+        return {
+            "response": f"An error occurred while fetching current Salesforce candidates: {e}",
+            "status_code": 500,
+        }
