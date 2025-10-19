@@ -1,5 +1,5 @@
 from logging_module import logger
-from openai import OpenAI
+from openai import  AsyncOpenAI
 from config import constants
 import re
 import json
@@ -9,7 +9,7 @@ class OpenAIService:
         """
         Initialize the OpenAI service with the API key from the constants file.
         """
-        self.openai_client = OpenAI(
+        self.openai_client = AsyncOpenAI(
             api_key=constants.OPENAI_API_KEY,
         )
 
@@ -32,7 +32,7 @@ class OpenAIService:
         """
         try:
             logger.info("Sending prompt to OpenAI GPT API...")
-            response = self.openai_client.chat.completions.create(
+            response = await self.openai_client.chat.completions.create(
                 model="o4-mini",
                 messages=[
                     {"role": "system", "content": system_prompt},
@@ -97,7 +97,7 @@ class OpenAIService:
     async def generate_text_embeddings(self, text):
         try:
             embedding_model = constants.EMBEDDING_MODEL
-            response = self.openai_client.embeddings.create(
+            response = await self.openai_client.embeddings.create(
                 input=text,
                 model=embedding_model
             )
