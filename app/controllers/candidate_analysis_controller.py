@@ -187,3 +187,13 @@ async def get_current_salesfoce_candidates(page: int = 1, page_size: int = 10, u
     return JSONResponse(
         content=response["response"], status_code=response["status_code"]
     )
+
+@router.get("/get-ai-matrix-by-trigger-id")
+async def get_ai_matrix_by_trigger_id(trigger_id: str, page:int = 1, page_size: int = 10, user_id: str = Depends(get_current_user_id)):
+    """Get the AI matrix by trigger ID."""
+    logger.info("Get AI matrix by trigger ID entry point")
+    response = await candidate_analysis_service.get_ai_matrix_by_trigger_id(trigger_id, page=page, page_size=page_size)
+    logger.info("Get AI matrix by trigger ID exit point")
+    return JSONResponse(
+        content=response["response"], status_code=response["status_code"]
+    )

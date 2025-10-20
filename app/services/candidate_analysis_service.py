@@ -983,3 +983,28 @@ async def get_current_salesforce_candidates(page: int = 1, page_size: int = 10):
             "response": f"An error occurred while fetching current Salesforce candidates: {e}",
             "status_code": 500,
         }
+    
+async def get_ai_matrix_by_trigger_id(trigger_id: str, page:int = 1, page_size: int = 10):
+    try:
+        logger.info("Fetching AI matrix by trigger ID")
+        candidates_ai_generated_metadata_collection = db[constants.CANDIDATES_AI_GENERATED_METADATA_COLLECTION]
+        total_candidates = await candidates_ai_generated_metadata_collection.count_documents({"trigger_id": trigger_id})
+        candidates = await candidates_ai_generated_metadata_collection.find({"trigger_id": trigger_id}).skip((page - 1) * page_size).limit(page_size).to_list(length=page_size)
+        cooked_candidates = []
+        for candidate in candidates:
+            candidate["id"] = str(candidate.pop("_id"))
+            cooked_candidates.append(candidate)
+        logger.info("AI matrix by trigger ID fetched successfully.")
+        return {
+            "response": {
+                "total_candidates": total_candidates,
+                "candidates": cooked_candidates
+            },
+            "status_code": 200,
+        }
+    except Exception as e:
+        logger.error(f"Error in fetching AI matrix by trigger ID: {e}")
+        return {
+            "response": f"An error occurred while fetching AI matrix by trigger ID: {e}",
+            "status_code": 500,
+        }
