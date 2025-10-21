@@ -984,12 +984,18 @@ async def get_current_salesforce_candidates(page: int = 1, page_size: int = 10):
             "status_code": 500,
         }
     
-async def get_ai_matrix_by_trigger_id(trigger_id: str, page:int = 1, page_size: int = 10):
+async def get_ai_matrix_by_trigger_id(trigger_id: str, page:int = 1, page_size: int = 10, sort_by: str = "final_score"):
     try:
         logger.info("Fetching AI matrix by trigger ID")
         candidates_ai_generated_metadata_collection = db[constants.CANDIDATES_AI_GENERATED_METADATA_COLLECTION]
         total_candidates = await candidates_ai_generated_metadata_collection.count_documents({"trigger_id": trigger_id})
-        candidates = await candidates_ai_generated_metadata_collection.find({"trigger_id": trigger_id}).skip((page - 1) * page_size).limit(page_size).to_list(length=page_size)
+
+        if sort_by == "final_score":
+            sort_criteria = [("final_score", -1)]
+        else:
+            sort_criteria = [("name", 1)]
+
+        candidates = await candidates_ai_generated_metadata_collection.find({"trigger_id": trigger_id}).skip((page - 1) * page_size).limit(page_size).sort(sort_criteria).to_list(length=page_size)
         cooked_candidates = []
         for candidate in candidates:
             candidate["id"] = str(candidate.pop("_id"))
