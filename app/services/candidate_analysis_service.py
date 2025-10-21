@@ -988,7 +988,7 @@ async def get_ai_matrix_by_trigger_id(trigger_id: str, page:int = 1, page_size: 
     try:
         logger.info("Fetching AI matrix by trigger ID")
         candidates_ai_generated_metadata_collection = db[constants.CANDIDATES_AI_GENERATED_METADATA_COLLECTION]
-        total_candidates = await candidates_ai_generated_metadata_collection.count_documents({"trigger_id": trigger_id})
+        total_candidates = await candidates_ai_generated_metadata_collection.count_documents({"trigger_id": trigger_id, "final_score": {"$gte": min_score}})
 
         if sort_by == "final_score":
             sort_criteria = [("final_score", -1)]
