@@ -694,6 +694,8 @@ async def select_candidates_for_matching(job_description: str, compensation_rang
                 successful_selections += 1
                 await db[constants.SEARCH_TRIGGERS_COLLECTION].update_one({"_id": ObjectId(trigger_id)}, {"$set": {"successfull_selections": successful_selections}})
 
+        await search_triggers_collection.update_one({"_id": ObjectId(trigger_id)}, {"$set": {"status": "completed"}})
+
 
         logger.info(f"Total candidates selected for matching: {successful_selections}")   
 
