@@ -10,6 +10,7 @@ from bson import ObjectId
 from utils.thirdparty.pinecone_service import PineConeDBService
 from datetime import datetime, date
 from utils.thirdparty.openai_service import OpenAIService
+from utils.thirdparty.embedding_service import EmbeddingService
 import time
 import pandas as pd
 from datetime import datetime
@@ -17,6 +18,7 @@ import random
 from typing import Dict, Any
 import re
 import pytz
+import numpy as np
 
 search_triggers_collection = db[constants.SEARCH_TRIGGERS_COLLECTION]
 
@@ -489,7 +491,106 @@ async def fetch_candidates_for_matching_job_description(job_description):
     except Exception as e:
         logger.error(f"Failed to query Pinecone index: {e}")
         return {"status_code": 500, "response": str(e)}
+
+
+async def sort_candidates_by_similarity(
+    job_description: str, 
+    users: list, 
+    embedding_model: str = None
+) -> dict:
+    """
+    Sort candidates by cosine similarity between job description and their resumes.
     
+    Args:
+        job_description: The job description text
+        users: List of user documents from MongoDB
+        embedding_model: OpenAI model name (optional, defaults to constants)
+    
+    Returns:
+        dict with status_code and sorted users_with_similarity list
+    """
+    try:
+        logger.info("Starting candidate sorting by cosine similarity...")
+        
+        users_linkedin_profile_collection = db[constants.USERS_LINKEDIN_PROFILE_COLLECTION]
+        
+        # Initialize OpenAI embedding service
+        model = embedding_model or constants.EMBEDDING_MODEL
+        
+        embedding_service = EmbeddingService(model=model)
+        logger.info(f"Using OpenAI embeddings with model: {model}")
+        
+        # Generate embedding for job description
+        logger.info("Generating job description embedding...")
+        job_embedding_response = await embedding_service.generate_embedding(job_description)
+        if job_embedding_response["status_code"] != 200:
+            return {
+                "response": "Failed to generate job description embedding.",
+                "status_code": 500,
+            }
+        job_embedding = np.array(job_embedding_response["embedding"])
+        logger.info(f"Job description embedding generated (dimension: {len(job_embedding)})")
+        
+        # Calculate cosine similarity for each user
+        users_with_similarity = []
+        total_users = len(users)
+        
+        for idx, user in enumerate(users, 1):
+            try:
+                user_profile = await users_linkedin_profile_collection.find_one(
+                    {"_id": ObjectId(user.get("linkedin_profile", ""))}
+                )
+                if not user_profile:
+                    logger.warning(f"No LinkedIn profile found for user {user.get('_id', '')}")
+                    continue
+                
+                # Get resume text
+                input_resume = await proxy_curl_service.get_key_value_concatenation(user_profile)
+                
+                # Generate embedding for resume
+                resume_embedding_response = await embedding_service.generate_embedding(input_resume)
+                if resume_embedding_response["status_code"] != 200:
+                    logger.warning(f"Failed to generate embedding for user {user.get('_id', '')}")
+                    continue
+                
+                resume_embedding = np.array(resume_embedding_response["embedding"])
+                
+                # Calculate cosine similarity
+                cosine_sim = np.dot(job_embedding, resume_embedding) / (
+                    np.linalg.norm(job_embedding) * np.linalg.norm(resume_embedding)
+                )
+                
+                users_with_similarity.append({
+                    "user": user,
+                    "similarity_score": float(cosine_sim)
+                })
+                
+                if idx % 10 == 0:
+                    logger.info(f"Processed {idx}/{total_users} users for similarity scoring")
+                    
+            except Exception as e:
+                logger.error(f"Error calculating similarity for user {user.get('_id', '')}: {e}")
+                continue
+        
+        # Sort users by similarity score in descending order
+        users_with_similarity.sort(key=lambda x: x["similarity_score"], reverse=True)
+        logger.info(f"Successfully sorted {len(users_with_similarity)} users by cosine similarity")
+        
+        return {
+            "status_code": 200,
+            "users_with_similarity": users_with_similarity,
+            "total_processed": len(users_with_similarity),
+            "total_input": total_users
+        }
+        
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        logger.error(f"Error in sort_candidates_by_similarity: {e}")
+        return {
+            "status_code": 500,
+            "response": f"Error sorting candidates: {e}"
+        }
 
 
 async def generate_metadata_of_candidates(job_description: str, compensation_range: str, location: str):
@@ -545,8 +646,17 @@ async def generate_metadata_of_candidates(job_description: str, compensation_ran
 
         await search_triggers_collection.update_one({"_id": ObjectId(search_trigger_id)}, {"$set": search_data})
 
+        sorting_result = await sort_candidates_by_similarity(job_description, users)
+        
+        if sorting_result["status_code"] != 200:
+            return sorting_result
+        
+        users_with_similarity = sorting_result["users_with_similarity"]
+
         target_candidates = []
-        for i, user in enumerate(users):
+        for i, user_data in enumerate(users_with_similarity):
+            user = user_data["user"]
+            similarity_score = user_data["similarity_score"]
             if await candidates_ai_generated_metadata_collection.find_one({"user_id": str(user.get("_id", "")), "trigger_id": search_trigger_id}):
                 logger.info(f"Metadata already generated for user {user.get('_id', '')}, skipping.")
                 continue
@@ -636,12 +746,13 @@ async def generate_metadata_of_candidates(job_description: str, compensation_ran
                     "relevant_experience_years": relevant_experience_years,
                     "senior_level_years": senior_level_years,
                     "current_location": candidates_current_location,
+                    "similarity_score": similarity_score,
                     **flattened_data,
                 }
                 await candidates_ai_generated_metadata_collection.insert_one(data)
                 await search_triggers_collection.update_one({"_id": ObjectId(search_trigger_id)}, {"$set": {"metadata_generated_for": len(target_candidates) + 1}})
 
-                logger.info(f"Remaining candidates: {len(users) - i - 1}")
+                logger.info(f"Remaining candidates: {len(users_with_similarity) - i - 1} (Similarity: {similarity_score:.4f})")
                 target_candidates.append(
                     data
                 )
