@@ -246,3 +246,16 @@ async def add_current_ote_to_candidates_blob(background_task: BackgroundTasks, u
     background_task.add_task(salesforce_service.add_current_ote_in_candidate_blob)
     logger.info("Add Current OTE to Candidates Blob exit point")
     return JSONResponse(content="Recieved", status_code=200)
+
+@router.post("/sync-salesforce-users")
+async def sync_salesforce_users(background_task: BackgroundTasks, user_id: str = Depends(get_current_user_id)):
+    """
+    Endpoint to sync Salesforce users.
+    
+    Returns:
+    - Success message.
+    """
+    logger.info("Sync Salesforce Users entry point")
+    background_task.add_task(salesforce_service.sync_salesforce_users)
+    logger.info("Sync Salesforce Users exit point")
+    return JSONResponse(content="Recieved", status_code=200)

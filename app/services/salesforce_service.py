@@ -2,8 +2,16 @@ from utils.thirdparty.salesforce_api_service import SalesforceApiService
 from logging_module import logger
 from config.db_connection import db
 from config import constants
-import time
 from bson import ObjectId
+from datetime import datetime, timezone
+from pymongo import UpdateOne, InsertOne
+from utils import helper_functions
+from utils.thirdparty import gong_api_service
+import services
+
+users_gong_transcript_collection = db[constants.USERS_GONG_TRANSCRIPT_COLLECTION]
+salesforce_users_collection = db[constants.SALESFORCE_USERS_COLLECTION]
+salesforce_instance = SalesforceApiService()
 
 async def get_salesforce_data(query):
     """Get data from Salesforce."""
@@ -180,6 +188,7 @@ async def get_salesforce_users():
         fetched_user_ids = {user['Id'] for user in users}
 
         print(len(users), "Fetched users")
+
         
         # Find existing user IDs in the database
         existing_users = await salesforce_users_collection.find(
@@ -272,7 +281,6 @@ async def assign_gong_conversaation_ids_to_the_candidates():
     """Assign Gong conversation IDs to the candidates."""
     try:
         salesforce_users_collection = db[constants.SALESFORCE_USERS_COLLECTION]
-        salesforce_instance = SalesforceApiService()
 
         # Fetch all Salesforce users
         salesforce_users = await salesforce_users_collection.find().to_list(length=None)
@@ -334,7 +342,7 @@ async def run_raw_saleforce_query_for_test():
 import requests
 import aiohttp
 import asyncio
-async def fetch_linkedin_url(session, user, salesforce_users_collection):
+async def fetch_linkedin_url(session, user):
     """Fetch LinkedIn URL from tinyurl and update in DB."""
     try:
         url = user.get("LinkedIn_Profile__c")
@@ -345,9 +353,11 @@ async def fetch_linkedin_url(session, user, salesforce_users_collection):
                     {"Id": user["Id"]},
                     {"$set": {"linkedin_url": linkedin_url}}
                 )
-                logger.info(f"Updated LinkedIn URL for {user['PersonEmail']}")
+                logger.info(f"Updated LinkedIn URL for {user.get('PersonEmail')}")
+                return True
+        return False
     except Exception as e:
-        logger.error(f"Error processing {user['PersonEmail']}: {e}")
+        return False
 
 
 async def convert_tinyurl_to_linkedin():
@@ -404,4 +414,279 @@ async def add_current_ote_in_candidate_blob():
         return {
             "response": f"An error occurred while adding current OTE in candidate blob: {e}",
             "status_code": 500,
+        }    
+
+async def sync_gong_ids_for_salesforce_users(salesforce_user_ids):
+    try:
+        logger.info(f"Syncing Gong IDs for {len(salesforce_user_ids)} Salesforce users")
+
+        gong_response = salesforce_instance.fetch_gong_records_by_salesforce_user_email("")
+        if gong_response["status_code"] != 200:
+            logger.error(f"Error fetching Gong records: {gong_response['response']}")
+            return gong_response
+
+        gong_records = gong_response["gong_records"]
+
+        salesforce_users = await salesforce_users_collection.find(
+            {"Id": {"$in": salesforce_user_ids}}
+        ).to_list(length=None)
+
+        # Group Gong records by Salesforce user
+        gong_records_by_user = {}
+        for record in gong_records:
+            user_id = record.get("Gong__Primary_Account__c")
+            call_id = record.get("Gong__Call_ID__c")
+            if user_id and call_id:
+                gong_records_by_user.setdefault(user_id, []).append(record)
+
+        for idx, user in enumerate(salesforce_users):
+            try:
+                user_id = user["Id"]
+                logger.info(
+                    f"Processing user {idx + 1}/{len(salesforce_users)} "
+                    f"email={user.get('PersonEmail')}"
+                )
+
+                user_gong_records = gong_records_by_user.get(user_id, [])
+                if not user_gong_records:
+                    continue
+
+                incoming_call_ids = {
+                    r["Gong__Call_ID__c"] for r in user_gong_records
+                }
+
+                existing_call_ids = set(user.get("gong_call_ids", []))
+                new_call_ids = incoming_call_ids - existing_call_ids
+
+                if not new_call_ids:
+                    logger.info(f"No new Gong calls for {user.get('PersonEmail')}")
+                    continue
+
+                inserted_transcript_ids = []
+
+                for call_id in new_call_ids:
+                    exists = await users_gong_transcript_collection.find_one(
+                        {"user_id": user_id, "call_id": call_id},
+                        {"_id": 1},
+                    )
+                    if exists:
+                        print(f"Transcript already exists for call_id={call_id}, skipping.")
+                        continue
+
+                    transcript_response = await gong_api_service.get_call_transcript_by_call_id(
+                        [call_id]
+                    )
+
+                    if transcript_response.get("status_code") != 200:
+                        logger.error(
+                            f"Failed to fetch transcript for call_id={call_id}"
+                        )
+                        continue
+
+                    transcript =  transcript_response["response"]["callTranscripts"][0]
+                    parsed = helper_functions.parse_transcript(transcript)
+                    if parsed.get("status_code") == 500:
+                        continue
+
+                    result = await users_gong_transcript_collection.insert_one(
+                        {
+                            "user_id": user_id,
+                            "call_id": call_id,
+                            "transcript": parsed["transcript"],
+                            "created_at": datetime.now(timezone.utc),
+                        }
+                    )
+                    inserted_transcript_ids.append(str(result.inserted_id))
+
+                participants_emails = list(
+                    {
+                        r.get("Gong__Participants_Emails__c")
+                        for r in user_gong_records
+                        if r.get("Gong__Participants_Emails__c")
+                    }
+                )
+
+                await salesforce_users_collection.update_one(
+                    {"Id": user_id},
+                    {
+                        "$addToSet": {
+                            "gong_call_ids": {"$each": list(new_call_ids)},
+                            "gong_transcript_ids": {"$each": inserted_transcript_ids},
+                            "gong_participants_emails": {
+                                "$each": participants_emails
+                            },
+                        },
+                        "$set": {"gong_ids_update_required": False},
+                    },
+                )
+
+                logger.info(
+                    f"Successfully synced {len(new_call_ids)} Gong calls "
+                    f"for {user.get('PersonEmail')}"
+                )
+
+            except Exception as user_err:
+                import traceback
+                traceback.print_exc()
+                logger.error(
+                    f"Error processing user {user.get('PersonEmail')}: {user_err}"
+                )
+                continue
+
+        return {
+            "status_code": 200,
+            "response": "Gong conversation IDs synced successfully",
         }
+
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        logger.error(f"Critical error in Gong sync: {e}")
+        return {
+            "status_code": 500,
+            "response": f"Error while syncing Gong IDs: {e}",
+        }
+    
+async def fetch_and_assign_linkedin_data_to_users(
+        session, user
+):
+    try:
+        response = await fetch_linkedin_url(session, user)
+        if response:
+            response = await services.proxy_curl_service.get_linkedin_person(user["LinkedIn_Profile__c"], str(user["_id"]))
+            if response["status_code"] == 200:
+                await salesforce_users_collection.update_one(
+                    {"_id": ObjectId(user["_id"])},
+                    {"$set": {"linkedin_update_required": False}}
+                )
+            logger.info(f"Fetched and assigned LinkedIn data for {user.get('PersonEmail')}")
+    except Exception as e:
+        logger.error(f"Error processing {user['PersonEmail']}: {e}")
+
+    
+async def sync_linkedin_profiles_for_salesforce_users(salesforce_user_ids):
+    try:
+        logger.info(f"Syncing LinkedIn profiles for {len(salesforce_user_ids)} Salesforce users")
+        salesforce_users = await salesforce_users_collection.find(
+            {"Id": {"$in": salesforce_user_ids}}
+        ).to_list(length=None)
+
+        async with aiohttp.ClientSession() as session:
+            tasks = [
+                fetch_and_assign_linkedin_data_to_users(session, user)
+                for user in salesforce_users
+            ]
+            await asyncio.gather(*tasks)
+
+        return {"response": "LinkedIn profiles synced successfully.", "status_code": 200}
+    except Exception as e:
+        print(e)
+        return {
+            "response": f"An error occurred while syncing LinkedIn profiles for Salesforce users: {e}",
+            "status_code": 500,
+        }
+
+async def sync_salesforce_users():
+    try:
+        sf = SalesforceApiService()
+        users = sf.get_salesforce_users()["users"][:5]
+        existing_users = await salesforce_users_collection.find(
+            {},
+            {"Id": 1, "Name": 1, "LinkedIn_Profile__c": 1, "PersonEmail": 1,
+             "Summary_of_Candidate__c": 1, "Current_OTE__c": 1, "Gong__Gong_Count__c": 1, "Consulting_Status__c": 1, "Status__c": 1}
+        ).to_list(length=None)
+
+        existing_map = {u["Id"]: u for u in existing_users}
+
+        ops = []
+        now = datetime.now(timezone.utc)
+
+        fields = [
+            "Name",
+            "LinkedIn_Profile__c",
+            "PersonEmail",
+            "Summary_of_Candidate__c",
+            "Current_OTE__c",
+            "Gong__Gong_Count__c",
+            "Consulting_Status__c",
+            "Status__c"
+        ]
+
+        for user in users:
+            user_id = user["Id"]
+
+            if user_id in existing_map:
+                updates = {
+                    f: user.get(f)
+                    for f in fields
+                    if user.get(f) != existing_map[user_id].get(f)
+                }
+
+                if updates:
+                    if "LinkedIn_Profile__c" in updates:
+                        updates["linkedin_update_required"] = True
+                    if "Gong__Gong_Count__c" in updates:
+                        updates["gong_ids_update_required"] = True
+                    updates["updated_at"] = now
+                    ops.append(
+                        UpdateOne(
+                            {"Id": user_id},
+                            {"$set": updates}
+                        )
+                    )
+            else:
+                print("Inserting new user", user_id)
+                user["linkedin_update_required"] = True
+                user["gong_ids_update_required"] = True
+                user["created_at"] = now
+                user["updated_at"] = now
+                ops.append(InsertOne(user))
+
+        if ops:
+            result = await salesforce_users_collection.bulk_write(ops)
+            logger.info(
+                f"Salesforce sync completed | "
+                f"Inserted: {result.inserted_count}, "
+                f"Modified: {result.modified_count}"
+            )
+
+        # pull the ids from database where gong_ids_update_required is True
+        update_gong_ids_for_users = []
+        async for user in salesforce_users_collection.find(
+            {"gong_ids_update_required": True},
+            {"Id": 1}
+        ):
+            update_gong_ids_for_users.append(user["Id"])
+
+        # pull the ids from database where linkedin_update_required is True
+        update_linkedin_for_users = []
+        async for user in salesforce_users_collection.find(
+            {"linkedin_update_required": True},
+            {"Id": 1}
+        ):
+            update_linkedin_for_users.append(user["Id"])
+
+        if update_gong_ids_for_users:
+            response = await sync_gong_ids_for_salesforce_users(update_gong_ids_for_users)
+            if response.get("status_code") != 200:
+                logger.error("Error updating gong IDs for users")
+            logger.info("Gong IDs sync completed")
+
+        # AI Pipeline for conversating summary in gong transcripts collection
+        conversation_summary_for_ids =  []
+        async for user in users_gong_transcript_collection.find(
+            {"conversation_summary": {"$exists": False}},
+            {"_id": 1}):
+            conversation_summary_for_ids.append(user["_id"])
+        for transcript_id in conversation_summary_for_ids:
+            await services.candidate_analysis_service.process_transcript_by_id(transcript_id)
+
+        if update_linkedin_for_users:
+            response = await sync_linkedin_profiles_for_salesforce_users(update_linkedin_for_users)
+            if response.get("status_code") != 200:
+                logger.error("Error updating LinkedIn profiles for users")
+            logger.info("LinkedIn profiles sync completed")
+
+    except Exception as e:
+        logger.exception("Error syncing Salesforce users")
+        return {"response": str(e), "status_code": 500}

@@ -250,12 +250,37 @@ class SalesforceApiService:
         Get all users from Salesforce.
         """
         try:
-            query = "SELECT Id, Name, LinkedIn_Profile__c, PersonEmail, Summary_of_Candidate__c, OwnerId, Gong__Gong_Count__c, Current_OTE__c FROM Account WHERE RecordType.Name = 'Candidate- Person Accounts' "
+            query = "SELECT Id, Name, LinkedIn_Profile__c, PersonEmail, Summary_of_Candidate__c, OwnerId, Gong__Gong_Count__c, Current_OTE__c, Consulting_Status__c, Status__c FROM Account WHERE RecordType.Name = 'Candidate- Person Accounts'"
             users = self.sf.query_all(query)
             return {"users": users['records'], "status_code": 200}
         except Exception as e:
             logger.error(f"Error fetching users from Salesforce: {e}")
-            return {"message": f"An error occurred while fetching users from Salesforce: {e}", "status_code": 500}
+            return {"message": f"An error occurred while fetching users from Salesforce: {e}", "status_code": 500, "users": []}
+    
+    def get_opportunities(self):
+        """
+        Get Opportunity Type only.
+        """
+        try:
+            query = """
+            SELECT
+                Id,
+                AccountId,
+                Name,
+                Type,
+            FROM Opportunity
+            WHERE Type = 'Staff Aug Fees'
+        """
+            result = self.sf.query_all(query)
+            return {"opportunities": result["records"], "status_code": 200}
+
+        except Exception as e:
+            logger.error(f"Error fetching opportunities from Salesforce: {e}")
+            return {
+                "message": f"Error fetching opportunities: {e}",
+                "status_code": 500,
+                "opportunities": []
+            }
         
     def get_salesforce_user(self, user_id):
         """
@@ -301,8 +326,15 @@ class SalesforceApiService:
             for table in tables:
                 try:
                     table_name = table["QualifiedApiName"]
+                    if not(table_name in ["Account", "Opportunity"]):
+                        continue
                     query_2 = f"SELECT COUNT() FROM {table_name}"
                     count = self.sf.query(query_2)["totalSize"]
+                    print(f"Table: {table_name}, Count: {count}")
+                    query_3 = f"SELECT QualifiedApiName FROM EntityParticle WHERE EntityDefinition.QualifiedApiName = '{table_name}' "
+                    fields = self.sf.query_all(query_3)["records"]
+                    field_names = [field["QualifiedApiName"] for field in fields]
+                    print(f"Fields in {table_name}: {field_names}")
                     table_count[table_name] = count
                 except Exception as e:
                     pass
