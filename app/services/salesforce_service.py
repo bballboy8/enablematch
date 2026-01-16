@@ -589,7 +589,7 @@ async def sync_linkedin_profiles_for_salesforce_users(salesforce_user_ids):
 async def sync_salesforce_users():
     try:
         sf = SalesforceApiService()
-        users = sf.get_salesforce_users()["users"][:5]
+        users = sf.get_salesforce_users()["users"]
         existing_users = await salesforce_users_collection.find(
             {},
             {"Id": 1, "Name": 1, "LinkedIn_Profile__c": 1, "PersonEmail": 1,
