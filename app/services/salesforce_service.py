@@ -417,21 +417,28 @@ async def add_current_ote_in_candidate_blob():
         }    
 
 async def sync_gong_ids_for_salesforce_users(salesforce_user_ids):
+    """
+    Sync Gong call transcripts for Salesforce users.
+    """
     try:
-        logger.info(f"Syncing Gong IDs for {len(salesforce_user_ids)} Salesforce users")
-
+        logger.info(f"Starting Gong sync for {len(salesforce_user_ids)} users")
+        # Step 1: Fetch all Gong records
         gong_response = salesforce_instance.fetch_gong_records_by_salesforce_user_email("")
-        if gong_response["status_code"] != 200:
-            logger.error(f"Error fetching Gong records: {gong_response['response']}")
+        if gong_response.get("status_code") != 200:
+            logger.error(f"Failed to fetch Gong records: {gong_response.get('response')}")
             return gong_response
 
-        gong_records = gong_response["gong_records"]
+        gong_records = gong_response.get("gong_records", [])
+        if not gong_records:
+            logger.info("No Gong records fetched.")
+            return {"status_code": 200, "response": "No Gong records to process."}
 
+        # Step 2: Fetch Salesforce users
         salesforce_users = await salesforce_users_collection.find(
             {"Id": {"$in": salesforce_user_ids}}
         ).to_list(length=None)
 
-        # Group Gong records by Salesforce user
+        # Step 3: Group Gong records by Salesforce user
         gong_records_by_user = {}
         for record in gong_records:
             user_id = record.get("Gong__Primary_Account__c")
@@ -439,114 +446,90 @@ async def sync_gong_ids_for_salesforce_users(salesforce_user_ids):
             if user_id and call_id:
                 gong_records_by_user.setdefault(user_id, []).append(record)
 
+        # Step 4: Process each user
         for idx, user in enumerate(salesforce_users):
-            try:
-                user_id = user["Id"]
-                logger.info(
-                    f"Processing user {idx + 1}/{len(salesforce_users)} "
-                    f"email={user.get('PersonEmail')}"
-                )
+            user_id = user["Id"]
+            email = user.get("PersonEmail")
+            logger.info(f"[{idx + 1}/{len(salesforce_users)}] Processing {email}")
 
+            try:
                 user_gong_records = gong_records_by_user.get(user_id, [])
                 if not user_gong_records:
                     continue
 
-                incoming_call_ids = {
-                    r["Gong__Call_ID__c"] for r in user_gong_records
-                }
-
+                incoming_call_ids = {r["Gong__Call_ID__c"] for r in user_gong_records}
                 existing_call_ids = set(user.get("gong_call_ids", []))
                 new_call_ids = incoming_call_ids - existing_call_ids
-
                 if not new_call_ids:
-                    logger.info(f"No new Gong calls for {user.get('PersonEmail')}")
+                    logger.info(f"No new Gong calls for {email}")
                     continue
 
+                successful_call_ids = set()
+                failed_call_ids = set()
                 inserted_transcript_ids = []
 
+                # Step 4a: Fetch and process transcripts
                 for call_id in new_call_ids:
+                    # Skip if transcript already exists
                     exists = await users_gong_transcript_collection.find_one(
-                        {"user_id": user_id, "call_id": call_id},
-                        {"_id": 1},
+                        {"user_id": user_id, "call_id": call_id}, {"_id": 1}
                     )
                     if exists:
-                        print(f"Transcript already exists for call_id={call_id}, skipping.")
+                        logger.info(f"Transcript already exists for call_id={call_id}")
+                        successful_call_ids.add(call_id)
                         continue
 
-                    transcript_response = await gong_api_service.get_call_transcript_by_call_id(
-                        [call_id]
-                    )
-
+                    # Fetch transcript
+                    transcript_response = await gong_api_service.get_call_transcript_by_call_id([call_id])
                     if transcript_response.get("status_code") != 200:
-                        logger.error(
-                            f"Failed to fetch transcript for call_id={call_id}"
-                        )
+                        logger.error(f"Failed to fetch transcript for call_id={call_id}")
+                        failed_call_ids.add(call_id)
                         continue
 
-                    transcript =  transcript_response["response"]["callTranscripts"][0]
+                    transcript = transcript_response["response"]["callTranscripts"][0]
                     parsed = helper_functions.parse_transcript(transcript)
                     if parsed.get("status_code") == 500:
+                        logger.error(f"Failed to parse transcript for call_id={call_id}")
+                        failed_call_ids.add(call_id)
                         continue
 
-                    result = await users_gong_transcript_collection.insert_one(
-                        {
-                            "user_id": user_id,
-                            "call_id": call_id,
-                            "transcript": parsed["transcript"],
-                            "created_at": datetime.now(timezone.utc),
-                        }
-                    )
+                    # Insert transcript
+                    result = await users_gong_transcript_collection.insert_one({
+                        "user_id": user_id,
+                        "call_id": call_id,
+                        "transcript": parsed["transcript"],
+                        "created_at": datetime.now(timezone.utc),
+                    })
                     inserted_transcript_ids.append(str(result.inserted_id))
+                    successful_call_ids.add(call_id)
 
-                participants_emails = list(
-                    {
-                        r.get("Gong__Participants_Emails__c")
-                        for r in user_gong_records
-                        if r.get("Gong__Participants_Emails__c")
-                    }
-                )
+                # Step 4b: Update Salesforce user document
+                participants_emails = list({
+                    r.get("Gong__Participants_Emails__c")
+                    for r in user_gong_records if r.get("Gong__Participants_Emails__c")
+                })
 
-                await salesforce_users_collection.update_one(
-                    {"Id": user_id},
-                    {
-                        "$addToSet": {
-                            "gong_call_ids": {"$each": list(new_call_ids)},
-                            "gong_transcript_ids": {"$each": inserted_transcript_ids},
-                            "gong_participants_emails": {
-                                "$each": participants_emails
-                            },
-                        },
-                        "$set": {"gong_ids_update_required": False},
+                update_doc = {
+                    "$addToSet": {
+                        "gong_call_ids": {"$each": list(successful_call_ids)},
+                        "gong_transcript_ids": {"$each": inserted_transcript_ids},
+                        "gong_participants_emails": {"$each": participants_emails},
                     },
-                )
-
-                logger.info(
-                    f"Successfully synced {len(new_call_ids)} Gong calls "
-                    f"for {user.get('PersonEmail')}"
-                )
+                    "$set": {"gong_ids_update_required": False},
+                }
+                await salesforce_users_collection.update_one({"Id": user_id}, update_doc)
+                logger.info(f"User {email}: {len(successful_call_ids)} calls synced, {len(failed_call_ids)} failed.")
 
             except Exception as user_err:
-                import traceback
-                traceback.print_exc()
-                logger.error(
-                    f"Error processing user {user.get('PersonEmail')}: {user_err}"
-                )
+                logger.exception(f"Error processing user {email}: {user_err}")
                 continue
 
-        return {
-            "status_code": 200,
-            "response": "Gong conversation IDs synced successfully",
-        }
+        return {"status_code": 200, "response": "Gong conversation IDs synced successfully"}
 
     except Exception as e:
-        import traceback
-        traceback.print_exc()
-        logger.error(f"Critical error in Gong sync: {e}")
-        return {
-            "status_code": 500,
-            "response": f"Error while syncing Gong IDs: {e}",
-        }
-    
+        logger.exception(f"Critical error in Gong sync: {e}")
+        return {"status_code": 500, "response": str(e)}
+
 async def fetch_and_assign_linkedin_data_to_users(
         session, user
 ):
