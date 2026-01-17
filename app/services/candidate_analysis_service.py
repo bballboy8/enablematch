@@ -1064,12 +1064,15 @@ async def get_the_top_candidate_for_jd(job_description: str):
 
 
 
-async def get_current_salesforce_candidates(page: int = 1, page_size: int = 10):
+async def get_current_salesforce_candidates(page: int = 1, page_size: int = 10, contractors_only: bool = False):
     try:
         logger.info("Fetching current Salesforce candidates")
         salesforce_users_collection = db[constants.SALESFORCE_USERS_COLLECTION]
-        total_candidates = await salesforce_users_collection.count_documents({})
-        candidates = await salesforce_users_collection.find({}).skip((page - 1) * page_size).limit(page_size).to_list(length=page_size)
+        query = {"Status__c": {"$ne": "Ignore- Not a Fit"}}
+        if contractors_only:
+            query["Consulting_Status__c"] = {"$in": ["Side Hustles", "FT Consulting"]}
+        total_candidates = await salesforce_users_collection.count_documents(query)
+        candidates = await salesforce_users_collection.find(query).skip((page - 1) * page_size).limit(page_size).to_list(length=page_size)
         cooked_candidates = []
         for candidate in candidates:
             cooked_candidates.append({

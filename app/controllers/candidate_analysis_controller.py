@@ -179,10 +179,10 @@ async def get_best_candidate(job_description: str,background_task:BackgroundTask
     )
 
 @router.get("/get-current-salesfoce-candidates")
-async def get_current_salesfoce_candidates(page: int = 1, page_size: int = 10, user_id: str = Depends(get_current_user_id)):
+async def get_current_salesfoce_candidates(page: int = 1, page_size: int = 10, contractors_only: bool = False, user_id: str = Depends(get_current_user_id)):
     """Get the current Salesforce candidates."""
     logger.info("Get current Salesforce candidates entry point")
-    response = await candidate_analysis_service.get_current_salesforce_candidates(page=page, page_size=page_size)
+    response = await candidate_analysis_service.get_current_salesforce_candidates(page=page, page_size=page_size, contractors_only=contractors_only)
     logger.info("Get current Salesforce candidates exit point")
     return JSONResponse(
         content=response["response"], status_code=response["status_code"]
