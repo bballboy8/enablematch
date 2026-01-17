@@ -1083,6 +1083,8 @@ async def get_current_salesforce_candidates(page: int = 1, page_size: int = 10, 
                 "linkedin_url": candidate.get("linkedin_url", ""),
                 "gong_conversation_count": candidate.get("Gong__Gong_Count__c", 0),
                 "summary_of_candidate": candidate.get("Summary_of_Candidate__c", ""),
+                "status": candidate.get("Status__c", ""),
+                "consulting_status": candidate.get("Consulting_Status__c", ""),
             })
         logger.info("Current Salesforce candidates fetched successfully.")
         print(cooked_candidates)
