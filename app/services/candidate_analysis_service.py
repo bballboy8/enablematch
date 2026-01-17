@@ -593,7 +593,7 @@ async def sort_candidates_by_similarity(
         }
 
 
-async def generate_metadata_of_candidates(job_description: str, compensation_range: str, location: str):
+async def generate_metadata_of_candidates(job_description: str, compensation_range: str, location: str, contractors_only: bool = False):
     try:
         logger.info("Fetching target candidates")
         openai_client = OpenAIService()
@@ -611,6 +611,7 @@ async def generate_metadata_of_candidates(job_description: str, compensation_ran
             "job_description": job_description,
             "compensation_range": compensation_range,
             "location": location,
+            "contractors_only": contractors_only,
             "status": "in_progress",
             "created_at": datetime.now(pytz.UTC)
         }
@@ -628,11 +629,17 @@ async def generate_metadata_of_candidates(job_description: str, compensation_ran
             constants.USERS_LINKEDIN_PROFILE_COLLECTION
         ]
 
+        query = {
+            "gong_transcript_ids": {"$exists": True},
+            "linkedin_profile": {"$exists": True},
+            "Status__c": {"$ne": "Ignore- Not a Fit"},   
+        }
+
+        if contractors_only:
+            query["Consulting_Status__c"] = {"$in": ["Side Hustles", "FT Consulting"]}
+
         users = await salesforce_users_collection.find(
-            {
-                "gong_transcript_ids": {"$exists": True},
-                "linkedin_profile": {"$exists": True},
-            }
+            query
         ).to_list(length=None)
 
         if not users:

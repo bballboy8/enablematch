@@ -127,6 +127,7 @@ class GenerateMetadataForCandidatesRequestBody(BaseModel):
     job_description: str
     compensation_range: str
     location: str
+    contractors_only: Optional[bool] = False
 
 
 @router.post("/generate-metadata-for-candidates")
