@@ -2,7 +2,7 @@ from utils import helper_functions
 from logging_module import logger
 from utils.thirdparty import gong_api_service
 import json
-from services import proxy_curl_service
+from services import scraped_linkedin_service
 from config.db_connection import db
 from config import constants
 import pandas as pd
@@ -75,10 +75,10 @@ async def analyze_candidate(job_description, call_id, salesforce_user_id, linked
         # LinkedIn Profile
         if linkedin_profile_url:
             logger.info(f"Fetching resume content for candidate with linkedin_profile_url {linkedin_profile_url}")
-            resume_response = await proxy_curl_service.get_linkedin_person(linkedin_profile_url)
+            resume_response = await scraped_linkedin_service.get_linkedin_person(linkedin_profile_url)
             if resume_response.get("status_code") != 200:
                 return resume_response
-            input_resume = await proxy_curl_service.get_key_value_concatenation(resume_response["data"])
+            input_resume = await scraped_linkedin_service.get_key_value_concatenation(resume_response["data"])
             input_resume = f"Source: LinkedIn\n{input_resume}"
             logger.info(f"Linkedin content fetched successfully for candidate with linkedin_profile_url {linkedin_profile_url}")
 
@@ -260,7 +260,7 @@ async def fetch_target_candidates():
             )
             if not user_profile:
                 continue
-            input_resume = await proxy_curl_service.get_key_value_concatenation(
+            input_resume = await scraped_linkedin_service.get_key_value_concatenation(
                 user_profile
             )
             target_candidates.append(
@@ -545,7 +545,7 @@ async def sort_candidates_by_similarity(
                     continue
                 
                 # Get resume text
-                input_resume = await proxy_curl_service.get_key_value_concatenation(user_profile)
+                input_resume = await scraped_linkedin_service.get_key_value_concatenation(user_profile)
                 
                 # Generate embedding for resume
                 resume_embedding_response = await embedding_service.generate_embedding(input_resume)
@@ -701,7 +701,7 @@ async def generate_metadata_of_candidates(job_description: str, compensation_ran
 
                 candidates_current_ote = user.get("Current_OTE__c", "")
 
-                input_resume = await proxy_curl_service.get_key_value_concatenation(
+                input_resume = await scraped_linkedin_service.get_key_value_concatenation(
                     user_profile
                 )
 
@@ -915,7 +915,7 @@ async def get_candidates_data(user):
             return {
                 "status_code": 404
             }
-        input_resume = await proxy_curl_service.get_key_value_concatenation(
+        input_resume = await scraped_linkedin_service.get_key_value_concatenation(
             user_profile
         )
 
