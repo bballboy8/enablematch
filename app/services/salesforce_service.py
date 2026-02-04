@@ -559,21 +559,25 @@ async def sync_linkedin_profiles_for_salesforce_users(salesforce_user_ids):
 
         for user in salesforce_users:
             linkedin_url = user.get("linkedin_url")
-            if linkedin_url:
-                scraped_profile = await scraped_linkedin_profiles_collection.find_one({"linkedinUrl": {"$regex": linkedin_url, "$options": "i"}}, {"_id": 1})
-                if scraped_profile:
-                    logger.info(f"Found scraped LinkedIn profile for {user.get('PersonEmail')}, updating user document")
-                    await salesforce_users_collection.update_one(
-                        {"Id": user["Id"]},
-                        {"$set": {
-                            "linkedin_update_required": False,
-                            "linkedin_profile": str(scraped_profile.get("_id"))
-                        }}
-                    )
-                    logger.info(f"LinkedIn profile data updated from cache for {user.get('PersonEmail')}")
-                
-                logger.info(f"Linkedin profile not found for user {linkedin_url}")
+            try:
+                if linkedin_url:
+                    scraped_profile = await scraped_linkedin_profiles_collection.find_one({"linkedinUrl": {"$regex": linkedin_url, "$options": "i"}}, {"_id": 1})
+                    if scraped_profile:
+                        logger.info(f"Found scraped LinkedIn profile for {user.get('PersonEmail')}, updating user document")
+                        await salesforce_users_collection.update_one(
+                            {"Id": user["Id"]},
+                            {"$set": {
+                                "linkedin_update_required": False,
+                                "linkedin_profile": str(scraped_profile.get("_id"))
+                            }}
+                        )
+                        logger.info(f"LinkedIn profile data updated from cache for {user.get('PersonEmail')}")
+                    else:
+                        logger.info(f"No cached profile found for {user.get('PersonEmail')}")
+            except Exception as e:
+                continue
 
+        logger.info("Sync Completed")
         return {"response": "LinkedIn profiles synced successfully.", "status_code": 200}
     except Exception as e:
         print(e)
