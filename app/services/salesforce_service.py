@@ -11,6 +11,7 @@ import services
 
 users_gong_transcript_collection = db[constants.USERS_GONG_TRANSCRIPT_COLLECTION]
 salesforce_users_collection = db[constants.SALESFORCE_USERS_COLLECTION]
+scraped_linkedin_profiles_collection = db[constants.SCRAPED_LINKEDIN_PROFILES_COLLECTION]
 salesforce_instance = SalesforceApiService()
 
 async def get_salesforce_data(query):
@@ -342,6 +343,7 @@ async def run_raw_saleforce_query_for_test():
 import requests
 import aiohttp
 import asyncio
+
 async def fetch_linkedin_url(session, user):
     """Fetch LinkedIn URL from tinyurl and update in DB."""
     try:
@@ -554,12 +556,23 @@ async def sync_linkedin_profiles_for_salesforce_users(salesforce_user_ids):
             {"Id": {"$in": salesforce_user_ids}}
         ).to_list(length=None)
 
-        async with aiohttp.ClientSession() as session:
-            tasks = [
-                fetch_and_assign_linkedin_data_to_users(session, user)
-                for user in salesforce_users
-            ]
-            await asyncio.gather(*tasks)
+
+        for user in salesforce_users:
+            linkedin_url = user.get("linkedin_url")
+            if linkedin_url:
+                scraped_profile = await scraped_linkedin_profiles_collection.find_one({"linkedinUrl": {"$regex": linkedin_url, "$options": "i"}}, {"_id": 1})
+                if scraped_profile:
+                    logger.info(f"Found scraped LinkedIn profile for {user.get('PersonEmail')}, updating user document")
+                    await salesforce_users_collection.update_one(
+                        {"Id": user["Id"]},
+                        {"$set": {
+                            "linkedin_update_required": False,
+                            "linkedin_profile": str(scraped_profile.get("_id"))
+                        }}
+                    )
+                    logger.info(f"LinkedIn profile data updated from cache for {user.get('PersonEmail')}")
+                
+                logger.info(f"Linkedin profile not found for user {linkedin_url}")
 
         return {"response": "LinkedIn profiles synced successfully.", "status_code": 200}
     except Exception as e:
