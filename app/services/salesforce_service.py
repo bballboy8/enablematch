@@ -603,7 +603,7 @@ async def sync_linkedin_profiles_for_salesforce_users(salesforce_user_ids):
 
 
         for user in salesforce_users:
-            linkedin_url = user.get("linkedin_url")
+            linkedin_url = user.get("LinkedIn_Profile__c")
             try:
                 if linkedin_url:
                     scraped_profile = await scraped_linkedin_profiles_collection.find_one({"linkedinUrl": {"$regex": linkedin_url, "$options": "i"}}, {"_id": 1})
