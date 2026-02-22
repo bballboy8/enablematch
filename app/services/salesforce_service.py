@@ -185,28 +185,30 @@ async def get_salesforce_users():
         users = salesforce_instance.get_salesforce_users()
         users = users['users']
 
-        # Extract Salesforce user IDs from the fetched users
-        fetched_user_ids = {user['Id'] for user in users}
+        print(users[0])
 
-        print(len(users), "Fetched users")
+        # # Extract Salesforce user IDs from the fetched users
+        # fetched_user_ids = {user['Id'] for user in users}
+
+        # print(len(users), "Fetched users")
 
         
-        # Find existing user IDs in the database
-        existing_users = await salesforce_users_collection.find(
-            {"Id": {"$in": list(fetched_user_ids)}},
-            {"Id": 1}
-        ).to_list(length=None)
-        existing_user_ids = {user['Id'] for user in existing_users}
+        # # Find existing user IDs in the database
+        # existing_users = await salesforce_users_collection.find(
+        #     {"Id": {"$in": list(fetched_user_ids)}},
+        #     {"Id": 1}
+        # ).to_list(length=None)
+        # existing_user_ids = {user['Id'] for user in existing_users}
         
-        # Filter out users that already exist in the database
-        new_users = [
-            user
-            for user in users if user['Id'] not in existing_user_ids
-        ]
+        # # Filter out users that already exist in the database
+        # new_users = [
+        #     user
+        #     for user in users if user['Id'] not in existing_user_ids
+        # ]
         
-        # Insert only new users
-        if new_users:
-            await salesforce_users_collection.insert_many(new_users)
+        # # Insert only new users
+        # if new_users:
+        #     await salesforce_users_collection.insert_many(new_users)
         
         return {"response": "Synced succesfully", "status_code": 200}
     except Exception as e:
@@ -641,6 +643,25 @@ async def sync_salesforce_users():
 
         existing_map = {u["Id"]: u for u in existing_users}
 
+
+        ids_to_delete = [user["Id"] for user in users if user.get("IsDeleted")]
+
+        if ids_to_delete:
+            await salesforce_users_collection.update_many(
+                {"Id": {"$in": list(ids_to_delete)}, "is_deleted": {"$ne": True}},
+                {
+                    "$set": {
+                        "is_deleted": True,
+                        "deleted_at": now,
+                        "updated_at": now
+                    }
+                }
+            )
+            logger.info(f"Soft-deleted {len(ids_to_delete)} users not found in Salesforce")
+
+        # skip the deleted users in the next steps
+        users = [user for user in users if not user.get("IsDeleted")]
+
         ops = []
         now = datetime.now(timezone.utc)
 
@@ -696,7 +717,7 @@ async def sync_salesforce_users():
         # pull the ids from database where gong_ids_update_required is True
         update_gong_ids_for_users = []
         async for user in salesforce_users_collection.find(
-            {"gong_ids_update_required": True},
+            {"gong_ids_update_required": True, "is_deleted": {"$ne": True}},
             {"Id": 1}
         ):
             update_gong_ids_for_users.append(user["Id"])
@@ -705,7 +726,7 @@ async def sync_salesforce_users():
         await sync_linkedin_urls()
         update_linkedin_for_users = []
         async for user in salesforce_users_collection.find(
-            {"linkedin_update_required": True},
+            {"linkedin_update_required": True, "is_deleted": {"$ne": True}},
             {"Id": 1}
         ):
             update_linkedin_for_users.append(user["Id"])
