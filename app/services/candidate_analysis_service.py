@@ -688,6 +688,7 @@ async def generate_metadata_of_candidates(job_description: str, compensation_ran
                     {"_id": ObjectId(user.get("linkedin_profile", ""))}
                 )
                 if not user_profile or ("error" in user_profile):
+                    logger.debug(user_profile)
                     continue
 
                 candidates_current_location = ""
@@ -730,7 +731,7 @@ async def generate_metadata_of_candidates(job_description: str, compensation_ran
 
                 print(relevant_experience_years, senior_level_years)
 
-                input_resume = f"Total Relevant Experience: {relevant_experience_years} years, Senior Level Experience: {senior_level_years} years\n{input_resume} Candidates Current Compenasation: {candidates_current_ote}"
+                input_resume = f"Total Relevant Experience: {relevant_experience_years} years, Senior Level Experience: {senior_level_years} years\n{input_resume} Candidates Current Compensation: {candidates_current_ote}"
 
                 recruiter_provided_summary = f"Recruiter provided summary: {user.get('Summary_of_Candidate__c', '')}\n\n"
 
