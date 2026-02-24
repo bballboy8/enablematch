@@ -600,13 +600,12 @@ async def generate_metadata_of_candidates(job_description: str, compensation_ran
         salesforce_users_collection = db[constants.SALESFORCE_USERS_COLLECTION]
         candidates_ai_generated_metadata_collection = db[constants.CANDIDATES_AI_GENERATED_METADATA_COLLECTION]
 
-
         if await search_triggers_collection.find_one({"status": "in_progress"}):
             return {
                 "response": "Another metadata generation is in progress. Please try again later.",
                 "status_code": 400,
             }
-        
+
         inital_data = {
             "job_description": job_description,
             "compensation_range": compensation_range,
@@ -626,7 +625,7 @@ async def generate_metadata_of_candidates(job_description: str, compensation_ran
             constants.USERS_GONG_TRANSCRIPT_COLLECTION
         ]
         users_linkedin_profile_collection = db[
-            constants.USERS_LINKEDIN_PROFILE_COLLECTION
+            constants.SCRAPED_LINKEDIN_PROFILES_COLLECTION
         ]
 
         query = {
@@ -654,10 +653,10 @@ async def generate_metadata_of_candidates(job_description: str, compensation_ran
         await search_triggers_collection.update_one({"_id": ObjectId(search_trigger_id)}, {"$set": search_data})
 
         sorting_result = await sort_candidates_by_similarity(job_description, users)
-        
+
         if sorting_result["status_code"] != 200:
             return sorting_result
-        
+
         users_with_similarity = sorting_result["users_with_similarity"]
 
         target_candidates = []
@@ -688,29 +687,45 @@ async def generate_metadata_of_candidates(job_description: str, compensation_ran
                 user_profile = await users_linkedin_profile_collection.find_one(
                     {"_id": ObjectId(user.get("linkedin_profile", ""))}
                 )
-                if not user_profile:
+                if not user_profile or ("error" in user_profile):
                     continue
-                
-                candidates_current_location = ""
-                if user_profile.get("city"):
-                    candidates_current_location = user_profile.get("city", "") 
-                if user_profile.get("state"):
-                    candidates_current_location += ", " + user_profile.get("state")
-                if user_profile.get("country"):
-                    candidates_current_location += ", " + user_profile.get("country")
 
-                candidates_current_ote = user.get("Current_OTE__c", "")
+                candidates_current_location = ""
+                if user_profile.get("addressWithCountry"):
+                    candidates_current_location = user_profile.get("addressWithCountry", "") 
 
                 input_resume = await scraped_linkedin_service.get_key_value_concatenation(
                     user_profile
                 )
-
-                experience_years = [ {'starts_at': experience.get("starts_at"), "ends_at": experience.get("ends_at"), "company" : experience.get("company"), "title" : experience.get("title"), "description" : experience.get("description")} for experience in user_profile.get('experiences', [])]
-                experience_years = "\n".join([f"Starts at: {experience.get('starts_at')}, Ends at: {experience.get('ends_at')}, Company: {experience.get('company')}, Title: {experience.get('title')}, Description: {experience.get('description')}" for experience in experience_years])
-                experience_years = await openai_client.generate_relevant_experience_years_v2(experience_years, job_description)
+                
+                candidates_current_ote = user.get("Current_OTE__c", "")
+                experience_years = [
+                    {
+                        "starts_at": experience.get("jobStartedOn"),
+                        "ends_at": experience.get("jobEndedOn"),
+                        "company": experience.get("company"),
+                        "title": experience.get("title"),
+                        "description": experience.get("jobDescription"),
+                        "type": experience.get("employmentType"),
+                    }
+                    for experience in user_profile.get("experiences", [])
+                ]
+                experience_years = "\n".join(
+                    [
+                        f"Starts at: {experience.get('starts_at')}, Ends at: {experience.get('ends_at')}, Company: {experience.get('company')}, Title: {experience.get('title')}, Description: {experience.get('description')} Employment Type: {experience.get('type')}"
+                        for experience in experience_years
+                    ]
+                )
+                experience_years = (
+                    await openai_client.generate_relevant_experience_years_v2(
+                        experience_years, job_description
+                    )
+                )
                 if experience_years["status_code"] != 200:
                     continue
-                relevant_experience_years = experience_years["relevant_experience_years"]
+                relevant_experience_years = experience_years[
+                    "relevant_experience_years"
+                ]
                 senior_level_years = experience_years["senior_level_years"]
 
                 print(relevant_experience_years, senior_level_years)
@@ -784,7 +799,7 @@ async def generate_metadata_of_candidates(job_description: str, compensation_ran
             "response": f"An error occurred while fetching target candidates: {e}",
             "status_code": 500,
         }
-    
+
 async def select_candidates_for_matching(job_description: str, compensation_range: str, location: str, trigger_id: any=None):
     try:
         logger.info("Selecting candidates for matching")
@@ -1068,7 +1083,6 @@ async def get_the_top_candidate_for_jd(job_description: str):
         traceback.print_exc()
         logger.error(f"Failed to process candidates: {e}")
         return {"status_code": 500, "response": str(e)}
-
 
 
 async def get_current_salesforce_candidates(page: int = 1, page_size: int = 10, contractors_only: bool = False):
