@@ -512,7 +512,7 @@ async def sort_candidates_by_similarity(
     try:
         logger.info("Starting candidate sorting by cosine similarity...")
         
-        users_linkedin_profile_collection = db[constants.USERS_LINKEDIN_PROFILE_COLLECTION]
+        users_linkedin_profile_collection = db[constants.SCRAPED_LINKEDIN_PROFILES_COLLECTION]
         
         # Initialize OpenAI embedding service
         model = embedding_model or constants.EMBEDDING_MODEL
