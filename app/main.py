@@ -2,6 +2,10 @@ import os
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
+import asyncio
+from fastapi_utils.tasks import repeat_every
+import services
+from config import constants
 from routers import (
     auth_router,
     candidate_analysis_router,
@@ -11,6 +15,15 @@ from routers import (
 )
 
 
+@repeat_every(seconds=60*10, wait_first=True)
+async def salesforce_user_sync():
+    try:
+        await asyncio.sleep(60)
+        print("Running salesforce_user_sync")
+        response = await services.salesforce_service.sync_salesforce_users()
+        print(response)
+    except Exception as e:
+        print(f"Error in salesforce_user_sync: {e}")
 
 
 
