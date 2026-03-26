@@ -805,7 +805,7 @@ async def select_candidates_for_matching(job_description: str, compensation_rang
     try:
         logger.info("Selecting candidates for matching")
         candidates_ai_generated_metadata_collection = db[constants.CANDIDATES_AI_GENERATED_METADATA_COLLECTION]
-        existing_candidates = await candidates_ai_generated_metadata_collection.find({"final_score": {"$gte": 75}, "fit": "yes", "selected_for_matching": {"$exists": False}}).to_list(length=None)
+        existing_candidates = await candidates_ai_generated_metadata_collection.find({"final_score": {"$gte": 75}, "fit": "yes", "trigger_id": trigger_id, "selected_for_matching": {"$exists": False}}).to_list(length=None)
 
         logger.info(f"Total Fit Candidates found: {len(existing_candidates)}")
 
