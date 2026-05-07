@@ -22,6 +22,32 @@ import numpy as np
 
 search_triggers_collection = db[constants.SEARCH_TRIGGERS_COLLECTION]
 
+
+async def is_search_trigger_stopped(trigger_id: str) -> bool:
+    if not trigger_id:
+        return False
+    return bool(
+        await search_triggers_collection.find_one(
+            {"_id": ObjectId(trigger_id), "status": "stopped"}
+        )
+    )
+
+
+def normalize_candidate_metadata(flattened_data: Dict[str, Any]) -> Dict[str, Any]:
+    normalized_data = {}
+    for key, value in flattened_data.items():
+        if value is None:
+            normalized_data[key] = value
+        elif isinstance(value, str) and value.isdigit():
+            normalized_data[key] = int(value)
+        elif isinstance(value, str):
+            normalized_data[key] = value.lower()
+        elif isinstance(value, list):
+            normalized_data[key] = [item.lower() if isinstance(item, str) else item for item in value]
+        else:
+            normalized_data[key] = value
+    return normalized_data
+
 async def analyze_database_candidate(job_description, db_id):
     try:
         logger.info(f"Processing record {db_id}")
@@ -659,7 +685,9 @@ async def generate_metadata_of_candidates(job_description: str, compensation_ran
 
         users_with_similarity = sorting_result["users_with_similarity"]
 
-        target_candidates = []
+        prepared_candidates = []
+        full_job_description = f"Job Description: {job_description}\n\n Compensation Range: {compensation_range}\n\n Location: {location}"
+
         for i, user_data in enumerate(users_with_similarity):
             user = user_data["user"]
             similarity_score = user_data["similarity_score"]
@@ -667,7 +695,7 @@ async def generate_metadata_of_candidates(job_description: str, compensation_ran
                 logger.info(f"Metadata already generated for user {user.get('_id', '')}, skipping.")
                 continue
 
-            if await search_triggers_collection.find_one({"_id": ObjectId(search_trigger_id), "status": "stopped"}):
+            if await is_search_trigger_stopped(search_trigger_id):
                 logger.info("Metadata generation stopped by user.")
                 return {
                     "response": "Metadata generation stopped by user.",
@@ -717,74 +745,128 @@ async def generate_metadata_of_candidates(job_description: str, compensation_ran
                         for experience in experience_years
                     ]
                 )
-                experience_years = (
-                    await openai_client.generate_relevant_experience_years_v2(
-                        experience_years, job_description
-                    )
-                )
-                if experience_years["status_code"] != 200:
-                    continue
-                relevant_experience_years = experience_years[
-                    "relevant_experience_years"
-                ]
-                senior_level_years = experience_years["senior_level_years"]
-
-                print(relevant_experience_years, senior_level_years)
-
-                input_resume = f"Total Relevant Experience: {relevant_experience_years} years, Senior Level Experience: {senior_level_years} years\n{input_resume} Candidates Current Compensation: {candidates_current_ote}"
-
                 recruiter_provided_summary = f"Recruiter provided summary: {user.get('Summary_of_Candidate__c', '')}\n\n"
-
-                job_description = f"Job Description: {job_description}\n\n Compensation Range: {compensation_range}\n\n Location: {location}"
-
-                text_blob = f"{recruiter_provided_summary} {input_resume} {''.join(conversation_summary)} {job_description}"
-
-                response = await openai_client.generate_metadata_via_ai_v2(text_blob)
-                if response["status_code"] != 200:
-                    continue
-
-                metadata = json.loads(response["metadata"])
-
-                flattened_data = {key: value for subdict in metadata.values() for key, value in subdict.items()}
-
-                # if the value is string lower it, if contains , split it and lower it if its null skip it
-                for key, value in flattened_data.items():
-                    if value is None:
-                        continue
-                    if isinstance(value, str) and str(value).isdigit():
-                        flattened_data[key] = int(value)
-                    elif isinstance(value, str):
-                        flattened_data[key] = value.lower()
-                    elif isinstance(value, list):
-                        flattened_data[key] = [item.lower() for item in value]
-
-                data = {
-                    "trigger_id": search_trigger_id,
-                    "name": user.get("Name"),
-                    "salesforce_id": user.get("Id"),
-                    "email": user.get("PersonEmail"),
-                    "user_id": str(user.get("_id", "")),
-                    "current_compensation": candidates_current_ote,
-                    "linkedin_profile": user.get("linkedin_url", ""),
-                    "relevant_experience_years": relevant_experience_years,
-                    "senior_level_years": senior_level_years,
-                    "current_location": candidates_current_location,
-                    "similarity_score": similarity_score,
-                    **flattened_data,
-                }
-                await candidates_ai_generated_metadata_collection.insert_one(data)
-                await search_triggers_collection.update_one({"_id": ObjectId(search_trigger_id)}, {"$set": {"metadata_generated_for": len(target_candidates) + 1}})
-
-                logger.info(f"Remaining candidates: {len(users_with_similarity) - i - 1} (Similarity: {similarity_score:.4f})")
-                target_candidates.append(
-                    data
+                prepared_candidates.append(
+                    {
+                        "custom_id": str(user.get("_id", "")),
+                        "name": user.get("Name"),
+                        "salesforce_id": user.get("Id"),
+                        "email": user.get("PersonEmail"),
+                        "user_id": str(user.get("_id", "")),
+                        "current_compensation": candidates_current_ote,
+                        "linkedin_profile": user.get("linkedin_url", ""),
+                        "current_location": candidates_current_location,
+                        "similarity_score": similarity_score,
+                        "experience_text": experience_years,
+                        "resume_text": input_resume,
+                        "conversation_summary": "".join(conversation_summary),
+                        "recruiter_provided_summary": recruiter_provided_summary,
+                        "job_description": job_description,
+                        "full_job_description": full_job_description,
+                    }
                 )
+                logger.info(f"Prepared candidate {i + 1}/{len(users_with_similarity)} for batched processing")
 
             except Exception as e:
                 import traceback
                 traceback.print_exc()
                 logger.error(f"Error processing record {user.get('_id', '')}: {e}")
                 continue
+
+        experience_batch_response = await openai_client.generate_relevant_experience_years_v2_batch(
+            [
+                {
+                    "custom_id": candidate["custom_id"],
+                    "experience_text": candidate["experience_text"],
+                    "job_description": candidate["job_description"],
+                }
+                for candidate in prepared_candidates
+            ],
+            stop_checker=lambda: is_search_trigger_stopped(search_trigger_id),
+        )
+        if experience_batch_response.get("status_code") != 200:
+            if experience_batch_response.get("cancelled"):
+                return {
+                    "response": "Metadata generation stopped by user.",
+                    "status_code": 200,
+                }
+            return {
+                "response": experience_batch_response.get("message", "Failed to batch process experience years."),
+                "status_code": 500,
+            }
+
+        metadata_batch_candidates = []
+        for candidate in prepared_candidates:
+            experience_result = experience_batch_response["results"].get(candidate["custom_id"])
+            if not experience_result or experience_result.get("status_code") != 200:
+                continue
+
+            relevant_experience_years = experience_result["relevant_experience_years"]
+            senior_level_years = experience_result["senior_level_years"]
+            candidate["relevant_experience_years"] = relevant_experience_years
+            candidate["senior_level_years"] = senior_level_years
+
+            enriched_resume = (
+                f"Total Relevant Experience: {relevant_experience_years} years, "
+                f"Senior Level Experience: {senior_level_years} years\n"
+                f"{candidate['resume_text']} Candidates Current Compensation: {candidate['current_compensation']}"
+            )
+            candidate["text_blob"] = (
+                f"{candidate['recruiter_provided_summary']} {enriched_resume} "
+                f"{candidate['conversation_summary']} {candidate['full_job_description']}"
+            )
+            metadata_batch_candidates.append(
+                {
+                    "custom_id": candidate["custom_id"],
+                    "text_blob": candidate["text_blob"],
+                }
+            )
+
+        metadata_batch_response = await openai_client.generate_metadata_via_ai_v2_batch(
+            metadata_batch_candidates,
+            stop_checker=lambda: is_search_trigger_stopped(search_trigger_id),
+        )
+        if metadata_batch_response.get("status_code") != 200:
+            if metadata_batch_response.get("cancelled"):
+                return {
+                    "response": "Metadata generation stopped by user.",
+                    "status_code": 200,
+                }
+            return {
+                "response": metadata_batch_response.get("message", "Failed to batch generate metadata."),
+                "status_code": 500,
+            }
+
+        target_candidates = []
+        for candidate in prepared_candidates:
+            metadata_result = metadata_batch_response["results"].get(candidate["custom_id"])
+            if not metadata_result or metadata_result.get("status_code") != 200:
+                continue
+
+            metadata = json.loads(metadata_result["metadata"])
+            flattened_data = {key: value for subdict in metadata.values() for key, value in subdict.items()}
+            flattened_data = normalize_candidate_metadata(flattened_data)
+
+            data = {
+                "trigger_id": search_trigger_id,
+                "name": candidate["name"],
+                "salesforce_id": candidate["salesforce_id"],
+                "email": candidate["email"],
+                "user_id": candidate["user_id"],
+                "current_compensation": candidate["current_compensation"],
+                "linkedin_profile": candidate["linkedin_profile"],
+                "relevant_experience_years": candidate["relevant_experience_years"],
+                "senior_level_years": candidate["senior_level_years"],
+                "current_location": candidate["current_location"],
+                "similarity_score": candidate["similarity_score"],
+                **flattened_data,
+            }
+            await candidates_ai_generated_metadata_collection.insert_one(data)
+            target_candidates.append(data)
+            await search_triggers_collection.update_one(
+                {"_id": ObjectId(search_trigger_id)},
+                {"$set": {"metadata_generated_for": len(target_candidates)}},
+            )
 
         logger.info(f"Metadata generated for {len(target_candidates)} candidates.")
 
@@ -809,20 +891,47 @@ async def select_candidates_for_matching(job_description: str, compensation_rang
 
         logger.info(f"Total Fit Candidates found: {len(existing_candidates)}")
 
-        successful_selections = 0
-        for candidate in existing_candidates:
-            if await search_triggers_collection.find_one({"_id": ObjectId(trigger_id), "status": "stopped"}):
-                logger.info("Candidate selection stopped by user.")
+        if await is_search_trigger_stopped(trigger_id):
+            logger.info("Candidate selection stopped by user.")
+            return {
+                "response": "Candidate selection stopped by user.",
+                "status_code": 200,
+            }
+
+        openai_client = OpenAIService()
+        batch_candidates = [
+            {
+                "custom_id": str(candidate["_id"]),
+                "job_description": job_description,
+                "candidate_summary": candidate.get("reasoning", ""),
+                "compensation_range": compensation_range,
+                "location": location,
+                "candidates_current_location": candidate.get("current_location", ""),
+                "candidates_compensation_range": candidate.get("compensation_range", ""),
+            }
+            for candidate in existing_candidates
+        ]
+        batch_response = await openai_client.select_candidates_for_matching_batch(
+            batch_candidates,
+            stop_checker=lambda: is_search_trigger_stopped(trigger_id),
+        )
+        if batch_response.get("status_code") != 200:
+            if batch_response.get("cancelled"):
                 return {
                     "response": "Candidate selection stopped by user.",
                     "status_code": 200,
                 }
-            openai_client = OpenAIService()
-            response = await openai_client.select_candidates_for_matching(job_description, candidate["reasoning"], compensation_range, location, candidate["current_location"], candidate["compensation_range"])
-            if response["status_code"] != 200:
+            return {
+                "response": batch_response.get("message", "Failed to batch select candidates for matching."),
+                "status_code": 500,
+            }
+
+        successful_selections = 0
+        for candidate in existing_candidates:
+            response = batch_response["results"].get(str(candidate["_id"]))
+            if not response or response.get("status_code") != 200:
                 continue
-            print(response["response"])
-            if str(response["response"]).lower() == "yes":
+            if str(response.get("response", "")).strip().lower().startswith("yes"):
                 await candidates_ai_generated_metadata_collection.update_one({"_id": candidate["_id"]}, {"$set": {"selected_for_matching": True}})
                 logger.info(f"Selected candidate: {candidate['name']}")
                 successful_selections += 1
