@@ -678,12 +678,11 @@ async def generate_metadata_of_candidates(job_description: str, compensation_ran
 
         await search_triggers_collection.update_one({"_id": ObjectId(search_trigger_id)}, {"$set": search_data})
 
-        sorting_result = await sort_candidates_by_similarity(job_description, users)
-
-        if sorting_result["status_code"] != 200:
-            return sorting_result
-
-        users_with_similarity = sorting_result["users_with_similarity"]
+        logger.info("Skipping candidate similarity sorting; processing users in fetched order")
+        users_with_similarity = [
+            {"user": user, "similarity_score": 0.0}
+            for user in users
+        ]
 
         prepared_candidates = []
         full_job_description = f"Job Description: {job_description}\n\n Compensation Range: {compensation_range}\n\n Location: {location}"
@@ -756,7 +755,6 @@ async def generate_metadata_of_candidates(job_description: str, compensation_ran
                         "current_compensation": candidates_current_ote,
                         "linkedin_profile": user.get("linkedin_url", ""),
                         "current_location": candidates_current_location,
-                        "similarity_score": similarity_score,
                         "experience_text": experience_years,
                         "resume_text": input_resume,
                         "conversation_summary": "".join(conversation_summary),
@@ -858,7 +856,6 @@ async def generate_metadata_of_candidates(job_description: str, compensation_ran
                 "relevant_experience_years": candidate["relevant_experience_years"],
                 "senior_level_years": candidate["senior_level_years"],
                 "current_location": candidate["current_location"],
-                "similarity_score": candidate["similarity_score"],
                 **flattened_data,
             }
             await candidates_ai_generated_metadata_collection.insert_one(data)
