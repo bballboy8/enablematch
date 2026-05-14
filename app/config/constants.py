@@ -17,6 +17,12 @@ CANDIDATES_AI_GENERATED_METADATA_COLLECTION = "candidates_ai_generated_metadata"
 CANDIDATES_BLOB_COLLECTION = "candidates_blob"
 SEARCH_TRIGGERS_COLLECTION = "search_triggers"
 SCRAPED_LINKEDIN_PROFILES_COLLECTION = "scraped_linkedin_profiles"
+PIPELINE_PROMPTS_COLLECTION = "pipeline_prompts"
+
+GENERATE_METADATA_PIPELINE_NAME = "generate_metadata_of_candidates"
+RELEVANT_EXPERIENCE_PROMPT_KEY = "relevant_experience_years_v2"
+METADATA_GENERATION_PROMPT_KEY = "metadata_v2"
+MATCH_SELECTION_PROMPT_KEY = "select_candidates_for_matching_v1"
 
 # keys
 USER_ID_FIELD = "user_id"

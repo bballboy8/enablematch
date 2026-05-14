@@ -19,6 +19,7 @@ from typing import Dict, Any
 import re
 import pytz
 import numpy as np
+from utils import pipeline_prompt_config
 
 search_triggers_collection = db[constants.SEARCH_TRIGGERS_COLLECTION]
 
@@ -1260,5 +1261,55 @@ async def get_ai_matrix_by_trigger_id(trigger_id: str, page:int = 1, page_size: 
         logger.error(f"Error in fetching AI matrix by trigger ID: {e}")
         return {
             "response": f"An error occurred while fetching AI matrix by trigger ID: {e}",
+            "status_code": 500,
+        }
+
+
+async def list_active_prompt_configurations():
+    try:
+        logger.info("Listing active prompt configurations")
+        prompts = await pipeline_prompt_config.list_active_pipeline_prompts()
+        return {
+            "response": {
+                "prompts": prompts,
+            },
+            "status_code": 200,
+        }
+    except Exception as e:
+        logger.error(f"Error in listing active prompt configurations: {e}")
+        return {
+            "response": {
+                "message": f"An error occurred while listing active prompt configurations: {e}",
+            },
+            "status_code": 500,
+        }
+
+
+async def update_active_prompt_configuration(prompt_key: str, system_prompt: str, user_prompt: str):
+    try:
+        logger.info(f"Updating active prompt configuration for prompt_key: {prompt_key}")
+        prompt = await pipeline_prompt_config.create_new_prompt_version(
+            prompt_key=prompt_key,
+            system_prompt=system_prompt,
+            user_prompt=user_prompt,
+        )
+        return {
+            "response": prompt,
+            "status_code": 200,
+        }
+    except ValueError as e:
+        logger.error(f"Invalid prompt configuration request: {e}")
+        return {
+            "response": {
+                "message": str(e),
+            },
+            "status_code": 400,
+        }
+    except Exception as e:
+        logger.error(f"Error in updating active prompt configuration: {e}")
+        return {
+            "response": {
+                "message": f"An error occurred while updating active prompt configuration: {e}",
+            },
             "status_code": 500,
         }
