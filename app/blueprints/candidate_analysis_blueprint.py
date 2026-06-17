@@ -13,3 +13,8 @@ class CandidateSuggestionsRequestBody(BaseModel):
 class DBCandidateAnalysisRequestBody(BaseModel):
     db_user_id: str
     job_description: str
+
+
+class PromptConfigurationUpdateRequestBody(BaseModel):
+    system_prompt: str
+    user_prompt: str

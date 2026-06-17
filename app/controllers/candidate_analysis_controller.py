@@ -5,7 +5,7 @@ from services import candidate_analysis_service
 from fastapi.responses import JSONResponse
 from typing import Optional
 from utils import helper_functions
-from blueprints.candidate_analysis_blueprint import CandidateAnalysisRequestBody, CandidateSuggestionsRequestBody, DBCandidateAnalysisRequestBody
+from blueprints.candidate_analysis_blueprint import CandidateAnalysisRequestBody, CandidateSuggestionsRequestBody, DBCandidateAnalysisRequestBody, PromptConfigurationUpdateRequestBody
 from fastapi.background import BackgroundTasks
 from pydantic import BaseModel
 
@@ -198,3 +198,23 @@ async def get_ai_matrix_by_trigger_id(trigger_id: str, page:int = 1, page_size: 
     return JSONResponse(
         content=response["response"], status_code=response["status_code"]
     )
+
+
+@router.get("/active-prompt-configurations")
+async def get_active_prompt_configurations(user_id: str = Depends(get_current_user_id)):
+    logger.info("Get active prompt configurations entry point")
+    response = await candidate_analysis_service.list_active_prompt_configurations()
+    logger.info("Get active prompt configurations exit point")
+    return JSONResponse(content=response["response"], status_code=response["status_code"])
+
+
+@router.put("/active-prompt-configurations/{prompt_key}")
+async def update_active_prompt_configuration(prompt_key: str, request: PromptConfigurationUpdateRequestBody, user_id: str = Depends(get_current_user_id)):
+    logger.info("Update active prompt configuration entry point")
+    response = await candidate_analysis_service.update_active_prompt_configuration(
+        prompt_key=prompt_key,
+        system_prompt=request.system_prompt,
+        user_prompt=request.user_prompt,
+    )
+    logger.info("Update active prompt configuration exit point")
+    return JSONResponse(content=response["response"], status_code=response["status_code"])

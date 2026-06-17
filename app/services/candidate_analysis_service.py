@@ -19,6 +19,7 @@ from typing import Dict, Any
 import re
 import pytz
 import numpy as np
+from utils import pipeline_prompt_config
 
 search_triggers_collection = db[constants.SEARCH_TRIGGERS_COLLECTION]
 
@@ -678,12 +679,11 @@ async def generate_metadata_of_candidates(job_description: str, compensation_ran
 
         await search_triggers_collection.update_one({"_id": ObjectId(search_trigger_id)}, {"$set": search_data})
 
-        sorting_result = await sort_candidates_by_similarity(job_description, users)
-
-        if sorting_result["status_code"] != 200:
-            return sorting_result
-
-        users_with_similarity = sorting_result["users_with_similarity"]
+        logger.info("Skipping candidate similarity sorting; processing users in fetched order")
+        users_with_similarity = [
+            {"user": user, "similarity_score": 0.0}
+            for user in users
+        ]
 
         prepared_candidates = []
         full_job_description = f"Job Description: {job_description}\n\n Compensation Range: {compensation_range}\n\n Location: {location}"
@@ -756,7 +756,6 @@ async def generate_metadata_of_candidates(job_description: str, compensation_ran
                         "current_compensation": candidates_current_ote,
                         "linkedin_profile": user.get("linkedin_url", ""),
                         "current_location": candidates_current_location,
-                        "similarity_score": similarity_score,
                         "experience_text": experience_years,
                         "resume_text": input_resume,
                         "conversation_summary": "".join(conversation_summary),
@@ -858,7 +857,6 @@ async def generate_metadata_of_candidates(job_description: str, compensation_ran
                 "relevant_experience_years": candidate["relevant_experience_years"],
                 "senior_level_years": candidate["senior_level_years"],
                 "current_location": candidate["current_location"],
-                "similarity_score": candidate["similarity_score"],
                 **flattened_data,
             }
             await candidates_ai_generated_metadata_collection.insert_one(data)
@@ -1263,5 +1261,55 @@ async def get_ai_matrix_by_trigger_id(trigger_id: str, page:int = 1, page_size: 
         logger.error(f"Error in fetching AI matrix by trigger ID: {e}")
         return {
             "response": f"An error occurred while fetching AI matrix by trigger ID: {e}",
+            "status_code": 500,
+        }
+
+
+async def list_active_prompt_configurations():
+    try:
+        logger.info("Listing active prompt configurations")
+        prompts = await pipeline_prompt_config.list_active_pipeline_prompts()
+        return {
+            "response": {
+                "prompts": prompts,
+            },
+            "status_code": 200,
+        }
+    except Exception as e:
+        logger.error(f"Error in listing active prompt configurations: {e}")
+        return {
+            "response": {
+                "message": f"An error occurred while listing active prompt configurations: {e}",
+            },
+            "status_code": 500,
+        }
+
+
+async def update_active_prompt_configuration(prompt_key: str, system_prompt: str, user_prompt: str):
+    try:
+        logger.info(f"Updating active prompt configuration for prompt_key: {prompt_key}")
+        prompt = await pipeline_prompt_config.create_new_prompt_version(
+            prompt_key=prompt_key,
+            system_prompt=system_prompt,
+            user_prompt=user_prompt,
+        )
+        return {
+            "response": prompt,
+            "status_code": 200,
+        }
+    except ValueError as e:
+        logger.error(f"Invalid prompt configuration request: {e}")
+        return {
+            "response": {
+                "message": str(e),
+            },
+            "status_code": 400,
+        }
+    except Exception as e:
+        logger.error(f"Error in updating active prompt configuration: {e}")
+        return {
+            "response": {
+                "message": f"An error occurred while updating active prompt configuration: {e}",
+            },
             "status_code": 500,
         }
